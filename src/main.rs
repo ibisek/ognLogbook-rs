@@ -48,9 +48,13 @@ impl Observer<AircraftBeacon> for AircraftBeaconListener {
         } 
 
         if self.time.elapsed().unwrap().as_secs() >= 60 {
-            println!("[INFO] Beacon rate: {}/min, {} queued.", 
+            let num_ogn = self.ogn_q.lock().unwrap().size();
+            let num_icao = self.icao_q.lock().unwrap().size();
+            let num_flarm = self.flarm_q.lock().unwrap().size();
+            println!("[INFO] Beacon rate: {}/min, {} queued (O {} / I {} / F {})", 
                 self.beacon_counter, 
-                self.ogn_q.lock().unwrap().size() + self.icao_q.lock().unwrap().size() +self.flarm_q.lock().unwrap().size(),
+                num_ogn + num_icao + num_flarm,
+                num_ogn, num_icao, num_flarm
             );
             
             self.beacon_counter = 0;
