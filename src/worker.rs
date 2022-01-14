@@ -61,6 +61,6 @@ impl Worker {
         });
 
         self.thread = Some(thread);
-        println!("THREAD {} started.", self.worker_type);
+        println!("[INFO] THREAD {} started.", self.worker_type);
     }
 }
