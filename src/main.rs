@@ -4,6 +4,8 @@ use queues::*;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::SystemTime;
+use std::thread;
+use std::time::Duration;
 
 use ogn_client::data_structures::{AircraftBeacon, Observer, AddressType};
 use ogn_client::OgnClient;
@@ -82,9 +84,10 @@ fn main() -> std::io::Result<()> {
 
     // create and run workers:
     let mut ogn_worker = Worker::new(AddressType::Ogn, queue_ogn);
+    ogn_worker.start();
     // let mut icao_worker = Worker::new(AddressType::Icao, queue_icao);
     // let mut flarm_worker = Worker::new(AddressType::Flarm, queue_flarm);
-    
+
     println!("Entering the loop..");
     client.do_loop();
 
