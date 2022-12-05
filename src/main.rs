@@ -85,7 +85,9 @@ fn main() -> std::io::Result<()> {
     let mut ogn_worker = Worker::new(AddressType::Ogn, queue_ogn);
     ogn_worker.start();
     // let mut icao_worker = Worker::new(AddressType::Icao, queue_icao);
+    // icao_worker.start();
     // let mut flarm_worker = Worker::new(AddressType::Flarm, queue_flarm);
+    // flarm_worker.start();
 
     println!("Entering the loop..");
     client.do_loop();

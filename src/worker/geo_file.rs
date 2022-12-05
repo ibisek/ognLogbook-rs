@@ -2,7 +2,7 @@ use gdal::Dataset;
 use gdal::spatial_ref::{SpatialRef, CoordTransform};
 // use gdal::raster::RasterBand;
 
-pub struct GeoFile {
+pub struct GeoFile { 
     xsize: i64,
     ysize: i64,
     dataset: Dataset,
@@ -10,8 +10,6 @@ pub struct GeoFile {
     geotransform: [f64; 6],
     ct: CoordTransform,
 }
-
-unsafe impl Send for GeoFile {}
 
 impl GeoFile {
 
