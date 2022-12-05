@@ -7,6 +7,9 @@ use std::time::SystemTime;
 use std::thread;
 use std::time::Duration;
 
+mod configuration;
+use configuration::{OGN_USERNAME, OGN_APRS_FILTER_LAT, OGN_APRS_FILTER_LON, OGN_APRS_FILTER_RANGE};
+
 use ogn_client::data_structures::{AircraftBeacon, Observer, AddressType};
 use ogn_client::OgnClient;
 
@@ -66,13 +69,9 @@ impl Observer<AircraftBeacon> for AircraftBeaconListener {
 }
 
 fn main() -> std::io::Result<()> {
-    let username = "blume2";
-    let lat = 49.1234;
-    let lon = 16.4567;
-    let range = 999999;
     
-    let mut client: OgnClient = OgnClient::new(username)?;
-    client.set_aprs_filter(lat, lon, range);
+    let mut client: OgnClient = OgnClient::new(OGN_USERNAME)?;
+    client.set_aprs_filter(OGN_APRS_FILTER_LAT, OGN_APRS_FILTER_LON, OGN_APRS_FILTER_RANGE);
     client.connect();
 
     let queue_ogn: Arc<Mutex<Queue<AircraftBeacon>>> = Arc::new(Mutex::new(Queue::new()));
