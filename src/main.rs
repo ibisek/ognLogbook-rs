@@ -4,8 +4,6 @@ use queues::*;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::SystemTime;
-use std::thread;
-use std::time::Duration;
 
 mod configuration;
 use configuration::{OGN_USERNAME, OGN_APRS_FILTER_LAT, OGN_APRS_FILTER_LON, OGN_APRS_FILTER_RANGE};
@@ -82,12 +80,12 @@ fn main() -> std::io::Result<()> {
     client.set_beacon_listener(abl);
 
     // create and run workers:
-    let mut ogn_worker = Worker::new(AddressType::Ogn, queue_ogn);
-    ogn_worker.start();
+    // let mut ogn_worker = Worker::new(AddressType::Ogn, queue_ogn);
+    // ogn_worker.start();
     // let mut icao_worker = Worker::new(AddressType::Icao, queue_icao);
     // icao_worker.start();
-    // let mut flarm_worker = Worker::new(AddressType::Flarm, queue_flarm);
-    // flarm_worker.start();
+    let mut flarm_worker = Worker::new(AddressType::Flarm, queue_flarm);
+    flarm_worker.start();
 
     println!("Entering the loop..");
     client.do_loop();

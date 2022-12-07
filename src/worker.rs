@@ -8,10 +8,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use ogn_client::data_structures::{AircraftBeacon, AddressType};
 
-use crate::configuration::GEOTIFF_FILEPATH;
-
+mod data_structures;
 mod geo_file;
-use geo_file::GeoFile;
+mod beacon_processor;
+use beacon_processor::BeaconProcessor;
 
 
 pub struct Worker {
@@ -23,15 +23,6 @@ pub struct Worker {
 
 impl Worker {
     pub fn new(worker_type: AddressType,  queue: Arc<Mutex<Queue<AircraftBeacon>>>) -> Worker {
-        // let thread = thread::spawn(move || loop {
-        //     loop {
-        //         let size = queue.lock().unwrap().size();
-        //         // println!("LOOP1");
-        //         println!("LOOP1 {} {}", worker_type.to_string(), size);
-        //         thread::sleep(Duration::from_secs(2));    
-        //     }
-        // });
-
         Self {
             thread: None, //Some(thread),
             do_run: Arc::new(AtomicBool::new(true)),
@@ -59,7 +50,8 @@ impl Worker {
 
         let thread = thread::spawn(
             move || {
-                let mut geo_file = GeoFile::new(GEOTIFF_FILEPATH);
+                // let mut geo_file = GeoFile::new(GEOTIFF_FILEPATH);
+                let mut bp = BeaconProcessor::new();
 
                 while do_run.load(Ordering::Relaxed) {
                     let num_queued = q.lock().unwrap().size();
@@ -69,30 +61,14 @@ impl Worker {
                     }
                     
                     while q.lock().unwrap().size() > 0 {
-
                         let beacon = q.lock().unwrap().remove().unwrap();
-                        // self.process_beacon(&beacon);
-
-                        let terrain_elevation = geo_file.get_value(beacon.lat, beacon.lon);
-                        let agl = match terrain_elevation {
-                            Some(e) => beacon.altitude - e as i32,
-                            None => 0,
-                        };
-                        println!("beacon: {beacon} | agl: {agl}m");
-
+                        bp.process(&beacon);
                     }
-
-                    //TODO the meat!
                 }
         });
 
         self.thread = Some(thread);
         println!("[INFO] THREAD {} started.", self.worker_type);
     }
-
-    fn process_beacon(&self, beacon: &AircraftBeacon) {
-        println!("beacon: {} {} lat: {:.5} lon: {:.5} alt: {:.1}", beacon.prefix, beacon.addr, beacon.lat, beacon.lon, beacon.altitude);
-        // let agl = geo_file.get_value(beacon.lat, beacon.lon);
-
-    }
+    
 }

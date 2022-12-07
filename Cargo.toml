@@ -6,8 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+chrono = "0.4.23"
 gdal = "0.14.0"
 ogn_client = { path = "../ognClient-rs" }
+simple_redis = "0.6.1"
 queues = "1.1.0"
+
 
 
