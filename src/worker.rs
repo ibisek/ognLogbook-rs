@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use ogn_client::data_structures::{AircraftBeacon, AddressType};
 
+mod airfield_manager;
 mod data_structures;
 mod geo_file;
 mod beacon_processor;
