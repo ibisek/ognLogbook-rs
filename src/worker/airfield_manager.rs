@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::fmt;
 use std::fs;
 
+use log::{info};
+
 // #[derive(Deserialize, Debug)]
 #[derive(Clone, Debug)]
 pub struct AirfieldRecord {
@@ -34,6 +36,7 @@ pub struct AirfieldManager {
 
 impl AirfieldManager {
     pub fn new(filepath: &str) -> AirfieldManager {
+        info!("Reading airfields from '{filepath}'");
 
         let mut airfields: Vec<AirfieldRecord> = AirfieldManager::load_airfields_from_file(filepath);
         airfields.sort_by(|a, b| a.lat.total_cmp(&b.lat) );

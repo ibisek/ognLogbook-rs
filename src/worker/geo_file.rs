@@ -1,3 +1,5 @@
+use log::{info};
+
 use gdal::Dataset;
 use gdal::spatial_ref::{SpatialRef, CoordTransform};
 // use gdal::raster::RasterBand;
@@ -14,6 +16,8 @@ pub struct GeoFile {
 impl GeoFile {
 
     pub fn new(geotiff_filepath: &str) -> GeoFile {
+        info!("Reading geotiff from '{geotiff_filepath}'");
+
         let dataset = Dataset::open(geotiff_filepath).unwrap();
         // println!("This {} is in '{}' and has {} bands.", dataset.driver().long_name(), dataset.spatial_ref().unwrap().name().unwrap(), dataset.raster_count());
         

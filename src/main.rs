@@ -5,6 +5,10 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::SystemTime;
 
+use log::{info};
+use simplelog::{ConfigBuilder, LevelFilter, SimpleLogger};
+use time::macros::format_description;
+
 mod configuration;
 use configuration::{OGN_USERNAME, OGN_APRS_FILTER_LAT, OGN_APRS_FILTER_LON, OGN_APRS_FILTER_RANGE};
 
@@ -54,7 +58,7 @@ impl Observer<AircraftBeacon> for AircraftBeaconListener {
             let num_ogn = self.ogn_q.lock().unwrap().size();
             let num_icao = self.icao_q.lock().unwrap().size();
             let num_flarm = self.flarm_q.lock().unwrap().size();
-            println!("[INFO] Beacon rate: {}/min, {} queued (O {} / I {} / F {})", 
+            info!("[INFO] Beacon rate: {}/min, {} queued (O {} / I {} / F {})", 
                 self.beacon_counter, 
                 num_ogn + num_icao + num_flarm,
                 num_ogn, num_icao, num_flarm
@@ -67,7 +71,14 @@ impl Observer<AircraftBeacon> for AircraftBeaconListener {
 }
 
 fn main() -> std::io::Result<()> {
+    let config = ConfigBuilder::new()
+        .set_target_level(LevelFilter::Info)
+        .set_time_format_custom(format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]"))
+        .build();
+    let _ = SimpleLogger::init(LevelFilter::Info, config);
     
+    info!("\n\n## OGN LOGBOOK ##\n");
+
     let mut client: OgnClient = OgnClient::new(OGN_USERNAME)?;
     client.set_aprs_filter(OGN_APRS_FILTER_LAT, OGN_APRS_FILTER_LON, OGN_APRS_FILTER_RANGE);
     client.connect();
@@ -87,9 +98,9 @@ fn main() -> std::io::Result<()> {
     let mut flarm_worker = Worker::new(AddressType::Flarm, queue_flarm);
     flarm_worker.start();
 
-    println!("Entering the loop..");
+    info!("Entering the loop..");
     client.do_loop();
 
-    println!("KOHEU.");
+    info!("KOHEU.");
     Ok(())
 }

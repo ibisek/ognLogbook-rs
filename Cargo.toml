@@ -6,12 +6,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+ogn_client = { path = "../ognClient-rs" }
+
 chrono = "0.4.23"
 gdal = "0.14.0"
-ogn_client = { path = "../ognClient-rs" }
 serde_json = "1.0.89"
 simple_redis = "0.6.1"
 queues = "1.1.0"
-
-
-
+log = "0.4.17"
+simplelog = "0.12.0"
+time = "0.3.15"
