@@ -4,24 +4,30 @@ use simple_redis::RedisResult;
 
 use ogn_client::data_structures::{AircraftBeacon, AircraftType};
 
-use crate::configuration::{GEOTIFF_FILEPATH, REDIS_RECORD_EXPIRATION, get_redis_url, AIRFIELDS_FILEPATH};
+use crate::configuration::{GEOTIFF_FILEPATH, REDIS_RECORD_EXPIRATION, get_redis_url, AIRFIELDS_FILEPATH, get_db_url};
 use crate::worker::airfield_manager::AirfieldManager;
 use crate::worker::data_structures::AircraftStatus;
 use crate::worker::geo_file::GeoFile;
+use crate::worker::db_thread::DbThread;
 
 pub struct BeaconProcessor {
     geo_file: GeoFile,
     redis: Client,
     airfield_manager: AirfieldManager,
+    db_thread: DbThread,
 }
 
 impl BeaconProcessor {
 
     pub fn new() -> BeaconProcessor {
+        let mut db_thread = DbThread::new(&get_db_url());
+        db_thread.start();
+
         BeaconProcessor { 
             geo_file: GeoFile::new(GEOTIFF_FILEPATH), 
             redis: simple_redis::create(&get_redis_url()).unwrap(),
             airfield_manager: AirfieldManager::new(AIRFIELDS_FILEPATH),
+            db_thread: db_thread,
         }
     }
 
@@ -113,7 +119,6 @@ impl BeaconProcessor {
         }
         self.save_to_redis(&gs_key, &format!("{:.0}", gs.round()), 3600);
 
-        println!("GS {gs:.0} km/h");
         // TODO.. radek 240+
 
         // TEMP
@@ -122,6 +127,9 @@ impl BeaconProcessor {
             Some(code) => println!("code: {code}"),
             None => (),
         }
+
+        self.db_thread.add_statement("select 1".into());
+        self.db_thread.add_statement("select 2".into());
         
 
     }
