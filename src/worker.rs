@@ -10,6 +10,7 @@ use ogn_client::data_structures::{AircraftBeacon, AddressType};
 
 mod airfield_manager;
 mod data_structures;
+mod db_thread;
 mod geo_file;
 mod beacon_processor;
 use beacon_processor::BeaconProcessor;
