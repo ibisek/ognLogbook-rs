@@ -42,3 +42,6 @@ ruzne:
 
     https://stackoverflow.com/questions/41081240/idiomatic-callbacks-in-rust
     https://tokio.rs/blog/2021-05-14-inventing-the-service-trait
+
+	logovani: pretty_env_logger = "0.4.0"
+
