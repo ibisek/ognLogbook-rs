@@ -57,7 +57,7 @@ impl AirfieldManager {
 
         for item in json.as_array().unwrap().into_iter() {
             let ar = AirfieldRecord::new(
-                &item["code"].to_string(), 
+                &item["code"].to_string().replace("\"", ""), 
                 item["lat"].to_string().parse().unwrap(), 
                 item["lon"].to_string().parse().unwrap()
             );
@@ -140,6 +140,7 @@ impl AirfieldManager {
             if dist < min_dist {
                 min_dist = dist;
                 code = Some(rec.code.clone());
+                println!("min dist: {0:.2} {1} {2:.4} {3:.4}", min_dist, rec.code, lat_rad.to_degrees(), lon_rad.to_degrees());
             }
         }
 

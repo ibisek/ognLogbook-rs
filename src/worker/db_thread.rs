@@ -72,7 +72,7 @@ impl DbThread {
         });
 
         self.thread = Some(thread);
-        info!("[INFO] db_thread started.");
+        info!("db_thread started.");
     }
 
 }

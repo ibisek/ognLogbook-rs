@@ -1,14 +1,18 @@
-use chrono;
+use std::thread::current;
+
+use chrono::prelude::*;
+use log::{info, debug};
 use simple_redis::client::Client;
 use simple_redis::RedisResult;
 
 use ogn_client::data_structures::{AircraftBeacon, AircraftType};
 
-use crate::configuration::{GEOTIFF_FILEPATH, REDIS_RECORD_EXPIRATION, get_redis_url, AIRFIELDS_FILEPATH, get_db_url};
+use crate::configuration::{GEOTIFF_FILEPATH, REDIS_RECORD_EXPIRATION, get_redis_url, AIRFIELDS_FILEPATH, get_db_url, AGL_LANDING_LIMIT};
 use crate::worker::airfield_manager::AirfieldManager;
-use crate::worker::data_structures::AircraftStatus;
+use crate::worker::data_structures::{AircraftStatus, AircraftStatusWithTs};
 use crate::worker::geo_file::GeoFile;
 use crate::worker::db_thread::DbThread;
+use crate::worker::utils::get_groundspeed_threshold;
 
 pub struct BeaconProcessor {
     geo_file: GeoFile,
@@ -31,7 +35,7 @@ impl BeaconProcessor {
         }
     }
 
-    fn get_agl(&mut self, beacon: &AircraftBeacon) -> i64 {
+    fn get_agl(&mut self, beacon: &AircraftBeacon) -> Option<i64> {
         let terrain_elevation = self.geo_file.get_value(beacon.lat, beacon.lon);
 
         match terrain_elevation {
@@ -40,9 +44,9 @@ impl BeaconProcessor {
                 if agl < 0 {
                     agl = 0;
                 }
-                return agl;
+                return Some(agl);
             },
-            None => 0,
+            None => None,
         }
     }
 
@@ -66,7 +70,7 @@ impl BeaconProcessor {
             return;
         }
 
-        println!("beacon: {beacon}");
+        // println!("beacon: {beacon}");
         let ts = beacon.ts as i64; // UTC [s]
         let now = chrono::offset::Utc::now().timestamp();
         if ts - now > 30 {
@@ -74,8 +78,11 @@ impl BeaconProcessor {
             return;
         }
 
+        let addres_type_c = beacon.addr_type.as_short_str();
+        let address = &beacon.addr;
+        
         // skip beacons we received for the second time and got already processed:
-        // key = f"{addressTypeStr}{address}-{lat:.4f}{lon:.4f}{altitude}{groundSpeed:.1f}{verticalSpeed:.1f}"
+        let key = format!("{addres_type_c}{address}-{0:.4}{1:.4}{2}{3:.1}{4:.1}", beacon.lat, beacon.lon, beacon.altitude, beacon.speed, beacon.climb_rate);
         // if key in self.beaconDuplicateCache:
         //     del self.beaconDuplicateCache[key]
         //     return
@@ -88,25 +95,21 @@ impl BeaconProcessor {
 
         // get altitude above ground level (AGL):
         let agl = self.get_agl(beacon);
-
+        // TODO AGL je TADY jen kvuli tomu, aby se to ulozilo do influxu.. i kdyz je fakt, ze kazdy radek v influxu to potrebuje..hmm
         // TODO insert into influx (done by ogn_short_time_memory thread?)
 
-        let addres_type_c = beacon.addr_type.as_short_str();
-        let address = &beacon.addr;
         let status_key = format!("{addres_type_c}{address}-status");
         let prev_status = match self.get_from_redis(&status_key) {
-            Ok(ps) => {
-                let items = ps.split(";").collect::<Vec<&str>>();   // parse "ps;ts"
-                AircraftStatus::from_i8(items[0].parse().unwrap_or(-1)) // -1 = Unknown
-            },
-            Err(_) => AircraftStatus::Unknown,
+            Ok(ps) => AircraftStatusWithTs::from_redis_str(&ps),
+            Err(_) => AircraftStatusWithTs::new(AircraftStatus::Unknown, beacon.ts),
         };
         
         let mut gs = beacon.speed as f64;  // [km/h]
         let gs_key = format!("{addres_type_c}{address}-gs");
-        if prev_status == AircraftStatus::Unknown { // we have no prior information
-            let status = format!("0;{ts}"); // 0 = AircraftStatus::OnGround
-            self.save_to_redis(&status_key, &status, REDIS_RECORD_EXPIRATION);
+        if prev_status.is(AircraftStatus::Unknown) { // we have no prior information
+            // let status = format!("0;{ts}"); // 0 = AircraftStatus::OnGround
+            let status = AircraftStatusWithTs::new(AircraftStatus::OnGround, beacon.ts);
+            self.save_to_redis(&status_key, &status.as_redis_str(), REDIS_RECORD_EXPIRATION);
             self.save_to_redis(&gs_key, &0.to_string(), 120); // gs = 0
         }
 
@@ -119,18 +122,69 @@ impl BeaconProcessor {
         }
         self.save_to_redis(&gs_key, &format!("{:.0}", gs.round()), 3600);
 
-        // TODO.. radek 240+
-
-        // TEMP
-        let code = self.airfield_manager.get_nearest(beacon.lat, beacon.lon);
-        match code {
-            Some(code) => println!("code: {code}"),
-            None => (),
+        let mut current_status = AircraftStatusWithTs::new(AircraftStatus::Unknown, beacon.ts);
+        if prev_status.is(AircraftStatus::OnGround) {
+            current_status.status = if gs > get_groundspeed_threshold(&beacon.aircraft_type, 'T') { AircraftStatus::Airborne } else { AircraftStatus::OnGround };
+        } else {    // when airborne
+            current_status.status = if gs <= get_groundspeed_threshold(&beacon.aircraft_type, 'L') { AircraftStatus::OnGround } else { AircraftStatus::Airborne };
         }
 
-        self.db_thread.add_statement("select 1".into());
-        self.db_thread.add_statement("select 2".into());
-        
+        if current_status.status != prev_status.status {
+            let event = if current_status.is(AircraftStatus::OnGround) {'L'} else {'T'}; // L = landing, T = take-off
+            let mut flight_time = 0;
+
+            if event == 'L' {
+                flight_time = current_status.ts - prev_status.ts;   // [s]
+                if flight_time < 120 { return }  // [s]
+
+                if flight_time > 12 * 3600 {    // some relic from the previous day
+                    self.redis.del(&status_key).unwrap();
+                    self.redis.del(&gs_key).unwrap();
+                    return;
+                }
+
+                // check altitude above ground level:
+                if agl.is_some() && agl.unwrap() > AGL_LANDING_LIMIT { return };    // most likely a false detection
+
+            } else if event == 'T' {
+                // check altitude above ground level:
+                if agl.is_some() && agl.unwrap() < 50 { return }; // most likely a false detection
+            }
+
+            self.save_to_redis(&status_key, &current_status.as_redis_str(), REDIS_RECORD_EXPIRATION);
+
+            let icao_location = self.airfield_manager.get_nearest(beacon.lat, beacon.lon);
+
+            let naive = NaiveDateTime::from_timestamp_opt(beacon.ts as i64, 0).unwrap();
+            let dt_str = DateTime::<Utc>::from_utc(naive, Utc).format("%H:%M:%S");
+            let icao_location_str = if icao_location.is_some() {icao_location.clone().unwrap()} else {"?".into()};
+            info!("EVENT: {dt_str}; {icao_location_str}; [{addres_type_c}] {}; {event}; {flight_time}", beacon.addr);
+
+            let icao_location_str = match icao_location {
+                Some(loc) => format!("'{loc}'"),
+                None => "null".into()
+            };
+
+            let str_sql = format!("INSERT INTO logbook_events \
+                     (ts, address, address_type, aircraft_type, event, lat, lon, location_icao, flight_time) \
+                     VALUES \
+                     ({ts}, '{address}', '{addres_type_c}', '{0}', \
+                     '{event}', {1:.5}, {2:.5}, {icao_location_str}, {flight_time});", 
+                     beacon.aircraft_type.value(), beacon.lat, beacon.lon);
+
+            // debug!("str_sql: {str_sql}");
+            self.db_thread.add_statement(str_sql);
+
+            // TODO.. radek 289+
+
+            // icaoLocation = icaoLocation.replace("'", '')
+            // EventWatcher.createEvent(redis=self.redis,
+            //                          ts=ts, event=event, address=address, addressType=addressType,
+            //                          lat=lat, lon=lon, icaoLocation=icaoLocation, flightTime=flightTime)
+
+        }
+
+        // self.beacon_duplicate_cache.tick();    // cleanup the cache (cannot be called from PeriodicTimer due to subprocess/threading troubles :|)
 
     }
 

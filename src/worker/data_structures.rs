@@ -1,7 +1,7 @@
-use std::fmt;
+// use std::fmt;
 
 #[repr(i8)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AircraftStatus {
     Unknown = -1,
     OnGround = 0,
@@ -24,3 +24,39 @@ impl AircraftStatus {
 //         write!(f, "{}", self.to_string())
 //     }
 // }
+
+#[derive(Debug, Clone, Copy)]
+pub struct AircraftStatusWithTs {
+    pub ts: u64,
+    pub status: AircraftStatus,
+}
+
+impl AircraftStatusWithTs {
+    pub fn new(status: AircraftStatus, ts:u64) -> AircraftStatusWithTs {
+        Self {
+            ts,
+            status,
+        }
+    }
+
+    // format: "0;ts"
+    pub fn as_redis_str(&self) -> String {
+        format!("{};{}", self.status as i8, self.ts)
+    }
+
+    // format: "0;ts"
+    pub fn from_redis_str(ps: &str) -> AircraftStatusWithTs {
+        let items = ps.split(";").collect::<Vec<&str>>();   // parse "ps;ts"
+        AircraftStatusWithTs { 
+            ts: items[1].parse().unwrap(),
+            status: AircraftStatus::from_i8(items[0].parse().unwrap_or(-1)), // -1 = Unknown
+        }
+    }
+
+    //TODO tady by to chtelo "impl Eq" na porovnavani AircraftStatusWithTs.status ==? AircraftStatus
+    pub fn is(&self, other_status: AircraftStatus) -> bool {
+        self.status == other_status
+    }
+    
+}
+

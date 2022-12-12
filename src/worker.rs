@@ -2,9 +2,11 @@
 use std::time::Duration;
 use std::sync::Arc;
 use std::sync::Mutex;
-use queues::*;
 use std::thread;
 use std::sync::atomic::{AtomicBool, Ordering};
+
+use log::{info, warn};
+use queues::*;
 
 use ogn_client::data_structures::{AircraftBeacon, AddressType};
 
@@ -14,7 +16,7 @@ mod db_thread;
 mod geo_file;
 mod beacon_processor;
 use beacon_processor::BeaconProcessor;
-
+mod utils;
 
 pub struct Worker {
     thread: Option<thread::JoinHandle<()>>,
@@ -42,7 +44,7 @@ impl Worker {
 
     pub fn start(&mut self) {
         if self.thread.is_some() {
-            println!("[WARN] Refused to start thread. The thread is already running!");
+            warn!("Refused to start thread. The thread is already running!");
             return;
         }
 
@@ -70,7 +72,7 @@ impl Worker {
         });
 
         self.thread = Some(thread);
-        println!("[INFO] THREAD {} started.", self.worker_type);
+        info!("Thread {} started.", self.worker_type);
     }
     
 }

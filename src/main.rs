@@ -10,7 +10,7 @@ use simplelog::{ConfigBuilder, LevelFilter, SimpleLogger};
 use time::macros::format_description;
 
 mod configuration;
-use configuration::{OGN_USERNAME, OGN_APRS_FILTER_LAT, OGN_APRS_FILTER_LON, OGN_APRS_FILTER_RANGE};
+use configuration::{LOG_LEVEL, OGN_USERNAME, OGN_APRS_FILTER_LAT, OGN_APRS_FILTER_LON, OGN_APRS_FILTER_RANGE};
 
 use ogn_client::data_structures::{AircraftBeacon, Observer, AddressType};
 use ogn_client::OgnClient;
@@ -58,7 +58,7 @@ impl Observer<AircraftBeacon> for AircraftBeaconListener {
             let num_ogn = self.ogn_q.lock().unwrap().size();
             let num_icao = self.icao_q.lock().unwrap().size();
             let num_flarm = self.flarm_q.lock().unwrap().size();
-            info!("[INFO] Beacon rate: {}/min, {} queued (O {} / I {} / F {})", 
+            info!("Beacon rate: {}/min, {} queued (O {} / I {} / F {})", 
                 self.beacon_counter, 
                 num_ogn + num_icao + num_flarm,
                 num_ogn, num_icao, num_flarm
@@ -72,10 +72,10 @@ impl Observer<AircraftBeacon> for AircraftBeaconListener {
 
 fn main() -> std::io::Result<()> {
     let config = ConfigBuilder::new()
-        .set_target_level(LevelFilter::Info)
-        .set_time_format_custom(format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]"))
+        .set_target_level(LOG_LEVEL)
+        .set_time_format_custom(format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:2]"))
         .build();
-    let _ = SimpleLogger::init(LevelFilter::Info, config);
+    let _ = SimpleLogger::init(LOG_LEVEL, config);
     
     info!("\n\n## OGN LOGBOOK ##\n");
 
@@ -91,10 +91,10 @@ fn main() -> std::io::Result<()> {
     client.set_beacon_listener(abl);
 
     // create and run workers:
-    // let mut ogn_worker = Worker::new(AddressType::Ogn, queue_ogn);
-    // ogn_worker.start();
-    // let mut icao_worker = Worker::new(AddressType::Icao, queue_icao);
-    // icao_worker.start();
+    let mut ogn_worker = Worker::new(AddressType::Ogn, queue_ogn);
+    ogn_worker.start();
+    let mut icao_worker = Worker::new(AddressType::Icao, queue_icao);
+    icao_worker.start();
     let mut flarm_worker = Worker::new(AddressType::Flarm, queue_flarm);
     flarm_worker.start();
 

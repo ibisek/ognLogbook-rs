@@ -1,4 +1,7 @@
 use std::env;
+use simplelog::LevelFilter;
+
+pub const LOG_LEVEL: LevelFilter = LevelFilter::Info;
 
 pub const OGN_USERNAME: &str = "rustbook";
 
@@ -10,11 +13,13 @@ pub const GEOTIFF_FILEPATH: &str = "./data/mosaic-500m.TIF";
 
 pub const AIRFIELDS_FILEPATH: &str = "./data/airfields.json";
 
+pub const AGL_LANDING_LIMIT: i64 = 100; // [m]
+
 const DB_HOST: &str = "localhost";
 const DB_PORT: &str = "3306";
 const DB_NAME: &str = "ogn_logbook";
 const DB_USER: &str = "ibisek";
-const DB_PASSWORD: &str = "**";
+const DB_PASSWORD: &str = "heslo";
 pub fn get_db_url() -> String {
     let db_host = env::var("DB_HOST").unwrap_or(DB_HOST.into());
     let db_port = env::var("DB_PORT").unwrap_or(DB_PORT.into());
