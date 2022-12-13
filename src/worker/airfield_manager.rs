@@ -39,7 +39,7 @@ impl AirfieldManager {
         info!("Reading airfields from '{filepath}'");
 
         let mut airfields: Vec<AirfieldRecord> = AirfieldManager::load_airfields_from_file(filepath);
-        airfields.sort_by(|a, b| a.lon.total_cmp(&b.lon) ); // ordering by lon gives better & faster results
+        airfields.sort_by(|a, b| a.lat.total_cmp(&b.lat) ); // ordering by lon gives better & faster results
 
         let airfields_in_quadrants = AirfieldManager::split_airfields_into_quadrants(airfields);
 
@@ -117,13 +117,13 @@ impl AirfieldManager {
         let mut n = 0;
         loop {
             let i = start_i + ((end_i - start_i) / 2) as usize;
-            if lon_rad < airfields.get(i).unwrap().lon {
+            if lat_rad < airfields.get(i).unwrap().lat {
                 end_i = i;
             } else {
                 start_i = i;
             }
 
-            if end_i - start_i <= 100 {
+            if end_i - start_i <= 200 {
                 break;
             }
 
@@ -133,9 +133,14 @@ impl AirfieldManager {
             }
         }
 
+        let d: f64 = 1_f64.to_radians();
+        let airfields_slice: Vec<&AirfieldRecord> = airfields[start_i..end_i+1].into_iter().filter(
+            |a| a.lon >= lon_rad - d && a.lon <= lon_rad + d
+            ).collect();
+
         let mut min_dist = 99999999999999_f64;
         let mut code: Option<String> = None;
-        for rec in airfields[start_i..end_i+1].into_iter() {
+        for rec in airfields_slice.into_iter() {
             let dist = AirfieldManager::get_distance_in_km(lat_rad, lon_rad, rec.lat, rec.lon);
             if dist < min_dist {
                 min_dist = dist;
@@ -143,8 +148,11 @@ impl AirfieldManager {
             }
         }
 
-        code
-
+        if min_dist < 5.0 {  // [km]
+            code
+        } else {
+            None
+        }
     }
 
 }

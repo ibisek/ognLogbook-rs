@@ -1,7 +1,6 @@
-use std::thread::current;
 
 use chrono::prelude::*;
-use log::{info, debug};
+use log::{info, debug, warn};
 use simple_redis::client::Client;
 use simple_redis::RedisResult;
 
@@ -78,7 +77,7 @@ impl BeaconProcessor {
         let ts = beacon.ts as i64; // UTC [s]
         let now = chrono::offset::Utc::now().timestamp();
         if ts - now > 30 {
-            print!("[WARN] Timestamp from the future: {ts}, now is {now}");
+            warn!("Timestamp from the future: {ts}, now is {now}");
             return;
         }
 
@@ -135,10 +134,10 @@ impl BeaconProcessor {
 
         if current_status.status != prev_status.status {
             let event = if current_status.is(AircraftStatus::OnGround) {'L'} else {'T'}; // L = landing, T = take-off
-            let mut flight_time = 0;
+            let mut flight_time: i64 = 0;
 
             if event == 'L' {
-                flight_time = current_status.ts - prev_status.ts;   // [s]
+                flight_time = (current_status.ts - prev_status.ts) as i64;   // [s]
                 if flight_time < 120 { return }  // [s]
 
                 if flight_time > 12 * 3600 {    // some relic from the previous day
@@ -162,7 +161,7 @@ impl BeaconProcessor {
             let naive = NaiveDateTime::from_timestamp_opt(beacon.ts as i64, 0).unwrap();
             let dt_str = DateTime::<Utc>::from_utc(naive, Utc).format("%H:%M:%S");
             let icao_location_str = if icao_location.is_some() {icao_location.clone().unwrap()} else {"?".into()};
-            info!("EVENT: {dt_str}; {icao_location_str}; [{addres_type_c}] {}; {event}; {flight_time}", beacon.addr);
+            info!("EVENT: {dt_str}; loc: {icao_location_str} [{addres_type_c}] {} {event} {flight_time}", beacon.addr);
 
             let icao_location_str = match icao_location {
                 Some(loc) => format!("'{loc}'"),
