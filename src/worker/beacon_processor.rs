@@ -12,6 +12,7 @@ use crate::worker::airfield_manager::AirfieldManager;
 use crate::worker::data_structures::{AircraftStatus, AircraftStatusWithTs};
 use crate::worker::geo_file::GeoFile;
 use crate::worker::db_thread::DbThread;
+use crate::worker::expiring_dict::ExpiringDict;
 use crate::worker::utils::get_groundspeed_threshold;
 
 pub struct BeaconProcessor {
@@ -19,6 +20,7 @@ pub struct BeaconProcessor {
     redis: Client,
     airfield_manager: AirfieldManager,
     db_thread: DbThread,
+    beacon_duplicate_cache:ExpiringDict<String, bool>,
 }
 
 impl BeaconProcessor {
@@ -32,6 +34,7 @@ impl BeaconProcessor {
             redis: simple_redis::create(&get_redis_url()).unwrap(),
             airfield_manager: AirfieldManager::new(AIRFIELDS_FILEPATH),
             db_thread: db_thread,
+            beacon_duplicate_cache: ExpiringDict::new(1000),
         }
     }
 
@@ -66,7 +69,8 @@ impl BeaconProcessor {
 
     pub fn process(&mut self, beacon: &AircraftBeacon) {
         //we are not interested in para, baloons, uavs and other crazy flying stuff:
-        if !vec![AircraftType::Undefined, AircraftType::Glider, AircraftType::HangGlider, AircraftType::PistonPlane, AircraftType::JetPlane, AircraftType::Unknown].contains(&beacon.aircraft_type) {
+        if vec![AircraftType::Undefined, AircraftType::Unknown, AircraftType::Baloon, AircraftType::Airship, AircraftType::Uav, AircraftType::Reserved, AircraftType::Obstacle].contains(&beacon.aircraft_type) {
+            // debug!("Skipping AT: {}", &beacon.aircraft_type);
             return;
         }
 
@@ -83,11 +87,11 @@ impl BeaconProcessor {
         
         // skip beacons we received for the second time and got already processed:
         let key = format!("{addres_type_c}{address}-{0:.4}{1:.4}{2}{3:.1}{4:.1}", beacon.lat, beacon.lon, beacon.altitude, beacon.speed, beacon.climb_rate);
-        // if key in self.beaconDuplicateCache:
-        //     del self.beaconDuplicateCache[key]
-        //     return
-        // else:
-        //     self.beaconDuplicateCache[key] = True   # store a marker in the cache .. will be dropped after TTL automatically later
+        if self.beacon_duplicate_cache.contains_key(&key) {
+            return;
+        } else {
+            self.beacon_duplicate_cache.insert(key, true);  // store a marker in the cache .. will be dropped after TTL automatically later
+        };
 
         if beacon.speed > 400 { // ignore fast (icao) airliners and jets
             return;
@@ -184,7 +188,7 @@ impl BeaconProcessor {
 
         }
 
-        // self.beacon_duplicate_cache.tick();    // cleanup the cache (cannot be called from PeriodicTimer due to subprocess/threading troubles :|)
+        self.beacon_duplicate_cache.tick();    // cleanup the cache (cannot be called from PeriodicTimer due to subprocess/threading troubles :|)
 
     }
 
