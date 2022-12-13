@@ -39,7 +39,7 @@ impl AirfieldManager {
         info!("Reading airfields from '{filepath}'");
 
         let mut airfields: Vec<AirfieldRecord> = AirfieldManager::load_airfields_from_file(filepath);
-        airfields.sort_by(|a, b| a.lat.total_cmp(&b.lat) );
+        airfields.sort_by(|a, b| a.lon.total_cmp(&b.lon) ); // ordering by lon gives better & faster results
 
         let airfields_in_quadrants = AirfieldManager::split_airfields_into_quadrants(airfields);
 
@@ -104,20 +104,20 @@ impl AirfieldManager {
 
     /// arguments in degrees
     pub fn get_nearest(&self, lat: f64, lon:f64) -> Option<String> {
+        // pick the appropriate airfields list (NE / NW / SE / SW):
+        let lat_sign = if lat >= 0_f64 {1} else {-1};
+        let lon_sign = if lon >= 0_f64 {1} else {-1};
+        let airfields = self.airfields_in_quadrants.get(&lat_sign).unwrap().get(&lon_sign).unwrap();
+
         let lat_rad = lat.to_radians();
         let lon_rad = lon.to_radians();
-
-        // pick the appropriate airfields list (NE / NW / SE / SW):
-        let lat_sign = if lat_rad >= 0_f64 {1} else {-1};
-        let lon_sign = if lon_rad >= 0_f64 {1} else {-1};
-        let airfields = self.airfields_in_quadrants.get(&lat_sign).unwrap().get(&lon_sign).unwrap();
 
         let mut start_i = 0;
         let mut end_i = airfields.len();
         let mut n = 0;
         loop {
             let i = start_i + ((end_i - start_i) / 2) as usize;
-            if lat_rad < airfields.get(i).unwrap().lat {
+            if lon_rad < airfields.get(i).unwrap().lon {
                 end_i = i;
             } else {
                 start_i = i;
@@ -140,7 +140,6 @@ impl AirfieldManager {
             if dist < min_dist {
                 min_dist = dist;
                 code = Some(rec.code.clone());
-                println!("min dist: {0:.2} {1} {2:.4} {3:.4}", min_dist, rec.code, lat_rad.to_degrees(), lon_rad.to_degrees());
             }
         }
 
