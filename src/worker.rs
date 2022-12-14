@@ -3,6 +3,7 @@ use std::time::Duration;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use log::{info, warn};
@@ -53,7 +54,7 @@ impl Worker {
         let q = Arc::clone(&self.queue);
         let do_run = Arc::clone(&self.do_run);
 
-        let thread = thread::spawn(
+        let thread = thread::Builder::new().name(self.worker_type.as_long_str()).spawn(
             move || {
                 // let mut geo_file = GeoFile::new(GEOTIFF_FILEPATH);
                 let mut bp = BeaconProcessor::new();
@@ -70,7 +71,7 @@ impl Worker {
                         bp.process(&beacon);
                     }
                 }
-        });
+        }).unwrap();
 
         self.thread = Some(thread);
         info!("Thread {} started.", self.worker_type);
