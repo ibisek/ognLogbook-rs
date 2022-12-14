@@ -18,6 +18,10 @@ use ogn_client::OgnClient;
 mod worker;
 use worker::Worker;
 
+// mod cron;
+// use cron::periodic_timer::PeriodicTimer;
+
+
 struct AircraftBeaconListener {
     beacon_counter: u32,
     ogn_q: Arc<Mutex<Queue<AircraftBeacon>>>,
@@ -111,6 +115,9 @@ fn main() -> std::io::Result<()> {
     flarm_worker.start();
     let mut safesky_worker = Worker::new(AddressType::SafeSky, queue_safesky);
     safesky_worker.start();
+
+    // create and run cron jobs:
+    // TODO
 
     info!("Entering the loop..");
     client.do_loop();
