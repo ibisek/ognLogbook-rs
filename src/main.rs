@@ -1,6 +1,7 @@
 #[warn(non_snake_case)]
 
 use queues::*;
+use time::format_description::modifier::Period;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::SystemTime;
@@ -18,9 +19,8 @@ use ogn_client::OgnClient;
 mod worker;
 use worker::Worker;
 
-// mod cron;
-// use cron::periodic_timer::PeriodicTimer;
-
+mod cron;
+use cron::periodic_timer::PeriodicTimer;
 
 struct AircraftBeaconListener {
     beacon_counter: u32,
@@ -117,6 +117,9 @@ fn main() -> std::io::Result<()> {
     safesky_worker.start();
 
     // create and run cron jobs:
+    // let handler: fn() = pokus1;
+    let mut t = PeriodicTimer::new("nazev1".into(), 5, pokus1);
+    t.start();
     // TODO
 
     info!("Entering the loop..");
@@ -124,4 +127,8 @@ fn main() -> std::io::Result<()> {
 
     info!("KOHEU.");
     Ok(())
+}
+
+fn pokus1() {
+    println!("P0KUS2");
 }
