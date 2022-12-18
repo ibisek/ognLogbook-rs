@@ -20,9 +20,6 @@ use crate::airfield_manager::AirfieldManager;
 // pub const INFLUX_DB_NAME: &str = "ogn_logbook";
 // pub const INFLUX_SERIES_NAME: &str = "pos";
 
-const RUN_INTERVAL: u64 = 10;    
-
-
 #[derive(Debug)]
 struct LogbookEntry {
     id: u64, 
@@ -33,23 +30,11 @@ struct LogbookEntry {
     flown_dist: u64,
 }
 
-pub struct FlownDistanceCalculator {
-    // running: bool,
-    // influx_db_client: Client,
-}
+pub struct FlownDistanceCalculator {}
 
 impl FlownDistanceCalculator {
-    pub fn new() -> FlownDistanceCalculator {
-        info!("FlownDistanceCalculator scheduled to run every {RUN_INTERVAL} s.");
-        FlownDistanceCalculator {
-            // running: false,
-            // influx_db_client: Client::new(Url::parse(&get_influx_url()).unwrap(), Some(("", ""))).unwrap(),
-        }
-    }
-
     /// @param addr: ogn ID with prefix OGN/ICA/FLR
     fn calc_flown_distance(addr: &str, start_ts: i64, end_ts: i64) -> f64 {
-        // let end_ts = 0; //XXX
         let influx_db_client = Client::new(Url::parse(&get_influx_url()).unwrap(), Some(("", ""))).unwrap();
 
         let q= format!("SELECT lat, lon FROM {INFLUX_DB_NAME}..{INFLUX_SERIES_NAME} WHERE addr='{addr}' AND time >= {start_ts}000000000 AND time <= {end_ts}000000000 LIMIT 10");
@@ -94,10 +79,6 @@ impl FlownDistanceCalculator {
     }
 
     pub fn calc_distances() {
-        // if self.running { return }
-
-        // self.running = true;
-
         let mut update_sqls: Vec<String> = Vec::new();
 
         let str_sql = "SELECT e.id, e.address, e.address_type, e.takeoff_ts, e.landing_ts
@@ -106,8 +87,6 @@ impl FlownDistanceCalculator {
             AND e.address is not null AND e.address_type is not null AND e.takeoff_ts is not null AND e.landing_ts is not null 
         LIMIT 100";
 
-        // let db_url: &str = "mysql://ibisek:heslo@localhost:3306/ogn_logbook";
-        // let db_url = get_db_url().as_str();
         let binding = get_db_url();
         let db_url = binding.as_str();
         let pool = Pool::new(db_url).expect("Could not connect to MySQL db!");
@@ -138,18 +117,13 @@ impl FlownDistanceCalculator {
         }
 
         if update_sqls.len() > 0 {
+            info!("Updated {} flown distance(s)", update_sqls.len());
+
             for sql in update_sqls {
                 conn.query_drop(sql).unwrap();
             }
         }
 
-        // self.running = false;
     }
+    
 }
-
-// impl PeriodicTimerTask for FlownDistanceCalculator {
-//     fn tick(&self) {
-//         // self.calc_distances();
-//         FlownDistanceCalculator::calc_distances();
-//     }
-// }
