@@ -106,9 +106,8 @@ impl FlownDistanceCalculator {
         ).unwrap();
 
         for entry in entries {
-            let addr = format!("ICA{}", entry.addr);
+            let addr = format!("{}{}", entry.addr_type.as_long_str(), entry.addr);
             let dist = FlownDistanceCalculator::calc_flown_distance(&addr, entry.takeoff_ts, entry.landing_ts);
-            // println!("{:?}\n  dist: {dist:.2} km", entry);
 
             // save it even if the dist was 0 .. 0 will signalise there was no flight data available; null = to be still calculated
             let update_sql = format!("UPDATE logbook_entries SET flown_distance={} WHERE id = {};", dist.round(), entry.id);

@@ -135,7 +135,8 @@ impl AirfieldManager {
         }
 
         let d: f64 = 1_f64.to_radians();
-        let airfields_slice: Vec<&AirfieldRecord> = airfields[start_i..end_i+1].into_iter().filter(
+        let end_range = if airfields.len() > end_i+1 { end_i + 1 } else { end_i };
+        let airfields_slice: Vec<&AirfieldRecord> = airfields[start_i..end_range].into_iter().filter(
             |a| a.lon >= lon_rad - d && a.lon <= lon_rad + d
             ).collect();
 

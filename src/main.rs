@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use std::time::SystemTime;
 
 use log::{info};
-use simplelog::{ConfigBuilder, LevelFilter, SimpleLogger};
+use simplelog::{ConfigBuilder, SimpleLogger};
 use time::macros::format_description;
 
 mod airfield_manager;
