@@ -37,7 +37,7 @@ impl FlownDistanceCalculator {
     fn calc_flown_distance(addr: &str, start_ts: i64, end_ts: i64) -> f64 {
         let influx_db_client = Client::new(Url::parse(&get_influx_url()).unwrap(), Some(("", ""))).unwrap();
 
-        let q= format!("SELECT lat, lon FROM {INFLUX_DB_NAME}..{INFLUX_SERIES_NAME} WHERE addr='{addr}' AND time >= {start_ts}000000000 AND time <= {end_ts}000000000 LIMIT 10");
+        let q= format!("SELECT lat, lon FROM {INFLUX_DB_NAME}..{INFLUX_SERIES_NAME} WHERE addr='{addr}' AND time >= {start_ts}000000000 AND time <= {end_ts}000000000");
         let query = Query::new(q);
         let res: Result<DataFrame, ClientError> = influx_db_client.fetch_dataframe(query);
 
@@ -47,8 +47,7 @@ impl FlownDistanceCalculator {
         }
 
         let df = res.unwrap();
-
-        println!("DF:{}", df);
+        // println!("DF:{}", df);
 
         let s = df.to_string();
         let rows = s.split("\n").collect::<Vec<&str>>();
@@ -74,7 +73,7 @@ impl FlownDistanceCalculator {
             prev_lat = lat;
             prev_lon = lon;
         }
-        
+
         total_dist
     }
 
@@ -108,6 +107,7 @@ impl FlownDistanceCalculator {
         for entry in entries {
             let addr = format!("{}{}", entry.addr_type.as_long_str(), entry.addr);
             let dist = FlownDistanceCalculator::calc_flown_distance(&addr, entry.takeoff_ts, entry.landing_ts);
+            info!("Flown dist for '{addr}' is {dist} km.");
 
             // save it even if the dist was 0 .. 0 will signalise there was no flight data available; null = to be still calculated
             let update_sql = format!("UPDATE logbook_entries SET flown_distance={} WHERE id = {};", dist.round(), entry.id);
