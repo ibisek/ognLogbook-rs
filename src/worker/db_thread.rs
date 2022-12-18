@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 
-use log::{info, error};
+use log::{warn, error};
 use mysql::*;
 use mysql::prelude::*;
 
@@ -41,7 +41,7 @@ impl DbThread {
 
     pub fn start(&mut self) {
         if self.thread.is_some() {
-            println!("[WARN] Refused to start db_thread. The thread is already running!");
+            warn!("Refused to start db_thread. The thread is already running!");
             return;
         }
 
@@ -72,7 +72,6 @@ impl DbThread {
         });
 
         self.thread = Some(thread);
-        info!("db_thread started.");
     }
 
 }
