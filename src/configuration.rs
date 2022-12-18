@@ -30,6 +30,12 @@ pub fn get_db_url() -> String {
     format!("mysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
 }
 
+pub fn get_influx_url() -> String {
+    format!("http://{DB_HOST}:8086")
+}
+pub const INFLUX_DB_NAME: &str = "ogn_logbook";
+pub const INFLUX_SERIES_NAME: &str = "pos";
+
 
 pub const REDIS_RECORD_EXPIRATION: usize = 8*60*60;   // [s]
 

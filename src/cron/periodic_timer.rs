@@ -1,41 +1,60 @@
 /**
- * https://doc.rust-lang.org/stable/std/ops/trait.Fn.html
- * ..
+ * A tasker to execute callbacks in periodic intervals.
  */
 
- use std::time::Duration;
- use std::sync::atomic::{AtomicBool, Ordering};
- use std::sync::Arc;
- use std::thread;
- 
- use log::{info, warn};
- 
- // type PeriodicTimerHandler = fn() -> ();
+use std::ops::DerefMut;
+use std::time::Duration;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::thread;
+
+use log::{info, warn};
+
+pub trait PeriodicTimerTask {
+     fn tick(&self);
+ }
  
  pub struct PeriodicTimer {
      name: String,
-     handler: Arc<fn()>,
      interval: u64,  // [s]
      thread: Option<thread::JoinHandle<()>>,
      do_run: Arc<AtomicBool>,
+     handler: Arc<fn()>,
+    //  task: Arc<dyn PeriodicTimerTask + Sync + Send + 'static>,
  }
  
  impl PeriodicTimer {
      pub fn new(name: String, interval: u64, handler: fn()) -> PeriodicTimer {
          PeriodicTimer {
              name,
-             handler: Arc::new(handler),
              interval,
              thread: None,
              do_run: Arc::new(AtomicBool::new(true)),
+             handler: Arc::new(handler),
          }
      }
+
+    //  pub fn new(name: String, interval: u64, task: impl PeriodicTimerTask + Sync + Send + 'static) -> PeriodicTimer //  + DerefMut
+    //     // where T: PeriodicTimerTask + 'static,
+    //     {
+    //     PeriodicTimer {
+    //         name,
+    //         interval,
+    //         thread: None,
+    //         do_run: Arc::new(AtomicBool::new(true)),
+    //         handler: None,
+    //         // task: Box::new(task), 
+    //         task: Arc::new(task) as Arc<dyn PeriodicTimerTask + Sync + Send>,
+    //     }
+    // }
  
      pub fn stop(&mut self) {
          self.do_run.swap(false, Ordering::Relaxed);
          if let Some(thread) = self.thread.take() {
              thread.join().unwrap();
          }
+         
+         info!("Stopped timer for '{}'", self.name);
      }
  
      pub fn start(&mut self) {
@@ -43,16 +62,20 @@
              warn!("Refused to start thread. The thread is already running!");
              return;
          }
+
+         info!("Starting a timer for '{}' with interval of {}s", self.name, self.interval);
  
          // vars used by the thread internally:
          let interval = self.interval.clone();
-         let handler = Arc::clone(&self.handler);
          let do_run = Arc::clone(&self.do_run);
- 
+         let handler = Arc::clone(&self.handler);
+        //  let task = Arc::clone(&self.task);
+        
          let thread = thread::Builder::new().name(self.name.clone()).spawn(
              move || {
                  while do_run.load(Ordering::Relaxed) {
-                     handler();
+                    handler();
+                    // task.tick();
  
                      for _ in 0..interval {
                          thread::sleep(Duration::from_millis(1000));    

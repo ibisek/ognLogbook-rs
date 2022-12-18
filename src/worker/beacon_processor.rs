@@ -1,13 +1,13 @@
 
 use chrono::prelude::*;
-use log::{info, debug, warn};
+use log::{info, warn};
 use simple_redis::client::Client;
 use simple_redis::RedisResult;
 
 use ogn_client::data_structures::{AircraftBeacon, AircraftType};
 
 use crate::configuration::{GEOTIFF_FILEPATH, REDIS_RECORD_EXPIRATION, get_redis_url, AIRFIELDS_FILEPATH, get_db_url, AGL_LANDING_LIMIT};
-use crate::worker::airfield_manager::AirfieldManager;
+use crate::airfield_manager::AirfieldManager;
 use crate::worker::data_structures::{AircraftStatus, AircraftStatusWithTs};
 use crate::worker::geo_file::GeoFile;
 use crate::worker::db_thread::DbThread;
