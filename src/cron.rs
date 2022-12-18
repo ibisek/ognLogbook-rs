@@ -34,7 +34,10 @@ impl CronJobs {
 
         // let fdc = FlownDistanceCalculator::new();
         // let mut dist_calc_job = PeriodicTimer::new("Flown Distance Calculator".into(), 10, fdc);
-        let mut dist_calc_job = PeriodicTimer::new("Flown Distance Calculator".into(), 10, FlownDistanceCalculator::calc_distances);
+        let mut dist_calc_job = PeriodicTimer::new(
+            "Flown Distance Calculator".into(), 
+            10, 
+            FlownDistanceCalculator::calc_distances);
         dist_calc_job.start();
         self.jobs.push(dist_calc_job);
 
