@@ -22,5 +22,4 @@ url = "2.2.2"
 rinfluxdb = "0.2.0"
 rinfluxdb-influxql = "0.2.0"
 rinfluxdb-dataframe = "0.2.0"
-
-# reqwest = "0.11.13"
+rinfluxdb-types = "0.2.0"

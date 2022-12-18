@@ -5,10 +5,11 @@ use mysql::Pool;
 use mysql::Row;
 use mysql::prelude::Queryable;
 use rinfluxdb::influxql::blocking::Client;
-use rinfluxdb::dataframe::DataFrame;
 use rinfluxdb::influxql::Query;
 use rinfluxdb_influxql::ClientError;
 use url::Url;
+
+use crate::cron::dataframe::{Column, DataFrame};
 
 use crate::configuration::{INFLUX_DB_NAME, INFLUX_SERIES_NAME, get_influx_url, get_db_url};
 
@@ -49,18 +50,17 @@ impl FlownDistanceCalculator {
         let df = res.unwrap();
         // println!("DF:{}", df);
 
-        let s = df.to_string();
-        let rows = s.split("\n").collect::<Vec<&str>>();
+        let cols = df.columns;
+        let latitudes: &Column = cols.get("lat").unwrap();
+        let longitudes = cols.get("lon").unwrap();
+
+
         let mut prev_lat = 0_f64;
         let mut prev_lon = 0_f64;
         let mut total_dist = 0_f64;
-        for (i, row) in rows.iter().enumerate() {
-            if i < 2 || row.len() != 61 { continue }
-
-            // println!("R [{i}] {row} {}", row.len());
-            // let dt = &row[0..23].trim();
-            let lat = *(&row[23..41].trim().parse::<f64>().unwrap().to_radians());
-            let lon = *(&row[42..60].trim().parse::<f64>().unwrap().to_radians());
+        for i in 0..latitudes.len() {
+            let lat = latitudes.get_value(i).unwrap().to_radians();
+            let lon = longitudes.get_value(i).unwrap().to_radians();
             if prev_lat == 0_f64 && prev_lon == 0_f64 {
                 prev_lat = lat;
                 prev_lon = lon;
@@ -107,7 +107,7 @@ impl FlownDistanceCalculator {
         for entry in entries {
             let addr = format!("{}{}", entry.addr_type.as_long_str(), entry.addr);
             let dist = FlownDistanceCalculator::calc_flown_distance(&addr, entry.takeoff_ts, entry.landing_ts);
-            info!("Flown dist for '{addr}' is {dist} km.");
+            info!("Flown dist for '{addr}' is {dist:.1} km.");
 
             // save it even if the dist was 0 .. 0 will signalise there was no flight data available; null = to be still calculated
             let update_sql = format!("UPDATE logbook_entries SET flown_distance={} WHERE id = {};", dist.round(), entry.id);

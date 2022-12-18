@@ -3,6 +3,7 @@ use self::periodic_timer::PeriodicTimer;
 // pub(crate) mod periodic_timer;
 mod periodic_timer;
 
+mod dataframe;
 mod flown_distance_calculator;
 use flown_distance_calculator::{FlownDistanceCalculator};
 
