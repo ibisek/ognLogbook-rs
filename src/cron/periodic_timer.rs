@@ -2,7 +2,6 @@
  * A tasker to execute callbacks in periodic intervals.
  */
 
-use std::ops::DerefMut;
 use std::time::Duration;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;

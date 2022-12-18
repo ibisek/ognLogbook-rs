@@ -13,7 +13,7 @@ pub const GEOTIFF_FILEPATH: &str = "./data/mosaic-500m.TIF";
 
 pub const AIRFIELDS_FILEPATH: &str = "./data/airfields.json";
 
-pub const AGL_LANDING_LIMIT: i64 = 100; // [m]
+pub const AGL_LANDING_LIMIT: i32 = 100; // [m]
 
 const DB_HOST: &str = "localhost";
 const DB_PORT: &str = "3306";

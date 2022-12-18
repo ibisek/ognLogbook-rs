@@ -1,8 +1,11 @@
+use std::sync::Arc;
+use std::sync::Mutex;
 
 use chrono::prelude::*;
 use log::{info, warn};
 use simple_redis::client::Client;
 use simple_redis::RedisResult;
+use queues::*;
 
 use ogn_client::data_structures::{AircraftBeacon, AircraftType};
 
@@ -13,6 +16,7 @@ use crate::worker::geo_file::GeoFile;
 use crate::worker::db_thread::DbThread;
 use crate::worker::expiring_dict::ExpiringDict;
 use crate::worker::utils::get_groundspeed_threshold;
+use crate::worker::influx_worker::InfluxWorker;
 
 pub struct BeaconProcessor {
     geo_file: GeoFile,
@@ -20,6 +24,7 @@ pub struct BeaconProcessor {
     airfield_manager: AirfieldManager,
     db_thread: DbThread,
     beacon_duplicate_cache:ExpiringDict<String, bool>,
+    influx_worker: InfluxWorker,
 }
 
 impl BeaconProcessor {
@@ -28,21 +33,25 @@ impl BeaconProcessor {
         let mut db_thread = DbThread::new(&get_db_url());
         db_thread.start();
 
+        let mut influx_worker = InfluxWorker::new();
+        influx_worker.start();
+
         BeaconProcessor { 
             geo_file: GeoFile::new(GEOTIFF_FILEPATH), 
             redis: simple_redis::create(&get_redis_url()).unwrap(),
             airfield_manager: AirfieldManager::new(AIRFIELDS_FILEPATH),
             db_thread: db_thread,
             beacon_duplicate_cache: ExpiringDict::new(1000),
+            influx_worker,
         }
     }
 
-    fn get_agl(&mut self, beacon: &AircraftBeacon) -> Option<i64> {
+    fn get_agl(&mut self, beacon: &AircraftBeacon) -> Option<i32> {
         let terrain_elevation = self.geo_file.get_value(beacon.lat, beacon.lon);
 
         match terrain_elevation {
             Some(e) => {
-                let mut agl = beacon.altitude as i64 - e;
+                let mut agl = beacon.altitude - (e as i32);
                 if agl < 0 {
                     agl = 0;
                 }
@@ -66,7 +75,7 @@ impl BeaconProcessor {
         self.redis.expire(&key, expiration).unwrap();   // REDIS_RECORD_EXPIRATION
     }
 
-    pub fn process(&mut self, beacon: &AircraftBeacon) {
+    pub fn process(&mut self, beacon: &mut AircraftBeacon) {
         //we are not interested in para, baloons, uavs and other crazy flying stuff:
         if vec![AircraftType::Undefined, AircraftType::Unknown, AircraftType::Baloon, AircraftType::Airship, AircraftType::Uav, AircraftType::Reserved, AircraftType::Obstacle].contains(&beacon.aircraft_type) {
             // debug!("Skipping AT: {}", &beacon.aircraft_type);
@@ -80,6 +89,15 @@ impl BeaconProcessor {
             warn!("Timestamp from the future: {ts}, now is {now}");
             return;
         }
+
+        // get altitude above ground level (AGL):
+        let agl = self.get_agl(&beacon);
+        if agl.is_some() {
+            beacon.set_agl(agl.unwrap());
+        }
+                
+        // store the beacon into influxdb:
+        self.influx_worker.store(&beacon);
 
         let addres_type_c = beacon.addr_type.as_short_str();
         let address = &beacon.addr;
@@ -95,11 +113,6 @@ impl BeaconProcessor {
         if beacon.speed > 400 { // ignore fast (icao) airliners and jets
             return;
         }
-
-        // get altitude above ground level (AGL):
-        let agl = self.get_agl(beacon);
-        // TODO AGL je TADY jen kvuli tomu, aby se to ulozilo do influxu.. i kdyz je fakt, ze kazdy radek v influxu to potrebuje..hmm
-        // TODO insert into influx (done by ogn_short_time_memory thread?)
 
         let status_key = format!("{addres_type_c}{address}-status");
         let prev_status = match self.get_from_redis(&status_key) {

@@ -11,12 +11,13 @@ use queues::*;
 
 use ogn_client::data_structures::{AircraftBeacon, AddressType};
 
+mod beacon_processor;
+use beacon_processor::BeaconProcessor;
 mod data_structures;
 mod db_thread;
 mod expiring_dict;
 mod geo_file;
-mod beacon_processor;
-use beacon_processor::BeaconProcessor;
+mod influx_worker;
 mod utils;
 
 pub struct Worker {
@@ -66,8 +67,8 @@ impl Worker {
                     }
                     
                     while q.lock().unwrap().size() > 0 {
-                        let beacon = q.lock().unwrap().remove().unwrap();
-                        bp.process(&beacon);
+                        let mut beacon = q.lock().unwrap().remove().unwrap();
+                        bp.process(&mut beacon);
                     }
                 }
         }).unwrap();
