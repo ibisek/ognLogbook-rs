@@ -9,17 +9,12 @@ use rinfluxdb::influxql::Query;
 use rinfluxdb_influxql::ClientError;
 use url::Url;
 
-use crate::cron::dataframe::{Column, DataFrame};
-
 use crate::configuration::{INFLUX_DB_NAME, INFLUX_SERIES_NAME, get_influx_url, get_db_url};
+use crate::db::dataframe::{Column, DataFrame};
+use crate::db::mysql::MySQL;
 
 use ogn_client::data_structures::AddressType;
 use crate::airfield_manager::AirfieldManager;
-// use crate::airfield_manager::AirfieldManager;
-
-// pub const INFLUX_DB_URL: &str = "http://localhost:8086";
-// pub const INFLUX_DB_NAME: &str = "ogn_logbook";
-// pub const INFLUX_SERIES_NAME: &str = "pos";
 
 #[derive(Debug)]
 struct LogbookEntry {
@@ -28,8 +23,9 @@ struct LogbookEntry {
     addr_type: AddressType, 
     takeoff_ts: i64, 
     landing_ts: i64,
-    flown_dist: u64,
 }
+
+pub const FDC_RUN_INTERVAL: u64 = 10;    // [s]
 
 pub struct FlownDistanceCalculator {}
 
@@ -43,7 +39,7 @@ impl FlownDistanceCalculator {
         let res: Result<DataFrame, ClientError> = influx_db_client.fetch_dataframe(query);
 
         if res.is_err() {
-            warn!("No influx data for '{addr}' between {start_ts} and {end_ts}.");
+            warn!("FDC: no influx data for '{addr}' between {start_ts} and {end_ts}.");
             return 0_f64;
         }
 
@@ -54,13 +50,12 @@ impl FlownDistanceCalculator {
         let latitudes: &Column = cols.get("lat").unwrap();
         let longitudes = cols.get("lon").unwrap();
 
-
         let mut prev_lat = 0_f64;
         let mut prev_lon = 0_f64;
         let mut total_dist = 0_f64;
         for i in 0..latitudes.len() {
-            let lat = latitudes.get_value(i).unwrap().to_radians();
-            let lon = longitudes.get_value(i).unwrap().to_radians();
+            let lat = latitudes.get_float_value(i).unwrap().to_radians();
+            let lon = longitudes.get_float_value(i).unwrap().to_radians();
             if prev_lat == 0_f64 && prev_lon == 0_f64 {
                 prev_lat = lat;
                 prev_lon = lon;
@@ -78,18 +73,15 @@ impl FlownDistanceCalculator {
     }
 
     pub fn calc_distances() {
-        let mut update_sqls: Vec<String> = Vec::new();
-
+        let mut mysql = MySQL::new();
+        
         let str_sql = "SELECT e.id, e.address, e.address_type, e.takeoff_ts, e.landing_ts
         FROM logbook_entries as e
         WHERE e.flown_distance is null 
             AND e.address is not null AND e.address_type is not null AND e.takeoff_ts is not null AND e.landing_ts is not null 
         LIMIT 100";
 
-        let binding = get_db_url();
-        let db_url = binding.as_str();
-        let pool = Pool::new(db_url).expect("Could not connect to MySQL db!");
-        let mut conn = pool.get_conn().unwrap();
+        let mut conn = mysql.get_connection();        
 
         let entries: Vec<LogbookEntry> = conn.query_map(str_sql, 
             |mut row: Row| {
@@ -99,10 +91,11 @@ impl FlownDistanceCalculator {
                     addr_type: AddressType::from_short_str(row.take(2).unwrap()),
                     takeoff_ts: row.take(3).unwrap(),
                     landing_ts: row.take(4).unwrap(),
-                    flown_dist: 0,
                 }
             }
         ).unwrap();
+
+        let mut update_sqls: Vec<String> = Vec::new();
 
         for entry in entries {
             let addr = format!("{}{}", entry.addr_type.as_long_str(), entry.addr);
