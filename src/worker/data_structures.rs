@@ -27,12 +27,12 @@ impl AircraftStatus {
 
 #[derive(Debug, Clone, Copy)]
 pub struct AircraftStatusWithTs {
-    pub ts: u64,
+    pub ts: i64,
     pub status: AircraftStatus,
 }
 
 impl AircraftStatusWithTs {
-    pub fn new(status: AircraftStatus, ts:u64) -> AircraftStatusWithTs {
+    pub fn new(status: AircraftStatus, ts:i64) -> AircraftStatusWithTs {
         Self {
             ts,
             status,
