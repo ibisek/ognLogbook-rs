@@ -85,8 +85,8 @@ impl BeaconProcessor {
         // println!("beacon: {beacon}");
         let ts = beacon.ts as i64; // UTC [s]
         let now = chrono::offset::Utc::now().timestamp();
-        if ts - now > 30 {
-            warn!("Timestamp from the future: {ts}, now is {now}");
+        if ts - now > 120 {
+            warn!("Timestamp from the future for {}: {ts}, now is {now} ({}s)", &beacon.addr, ts-now);
             return;
         }
 
@@ -174,7 +174,8 @@ impl BeaconProcessor {
             let naive = NaiveDateTime::from_timestamp_opt(beacon.ts as i64, 0).unwrap();
             let dt_str = DateTime::<Utc>::from_utc(naive, Utc).format("%H:%M:%S");
             let icao_location_str = if icao_location.is_some() {icao_location.clone().unwrap()} else {"?".into()};
-            info!("EVENT: {dt_str}; loc: {icao_location_str} [{addres_type_c}] {} {event} {flight_time}", beacon.addr);
+            let flight_time_str = if flight_time > 0 { format!("{flight_time}s") } else { "".into() };
+            info!("EVENT: {dt_str}; loc: {icao_location_str} [{addres_type_c}] {} {event} {flight_time_str}", beacon.addr);
 
             let icao_location_str = match icao_location {
                 Some(loc) => format!("'{loc}'"),
