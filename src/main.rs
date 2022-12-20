@@ -23,6 +23,7 @@ use worker::Worker;
 mod cron;
 use cron::CronJobs;
 
+mod db;
 
 struct AircraftBeaconListener {
     beacon_counter: u32,

@@ -3,9 +3,10 @@ use self::periodic_timer::PeriodicTimer;
 // pub(crate) mod periodic_timer;
 mod periodic_timer;
 
-mod dataframe;
 mod flown_distance_calculator;
-use flown_distance_calculator::{FlownDistanceCalculator};
+use flown_distance_calculator::{FlownDistanceCalculator, FDC_RUN_INTERVAL};
+mod real_takeoff_lookup;
+use real_takeoff_lookup::{RealTakeoffLookup, RTL_RUN_INTERVAL};
 
 pub struct CronJobs {
     jobs: Vec<PeriodicTimer>,
@@ -33,19 +34,20 @@ impl CronJobs {
         // self.redisReaperTimer = PeriodicTimer(RedisReaper.RUN_INTERVAL, self.rr.doWork)
         // self.redisReaperTimer.start()
 
-        // let fdc = FlownDistanceCalculator::new();
-        // let mut dist_calc_job = PeriodicTimer::new("Flown Distance Calculator".into(), 10, fdc);
         let mut dist_calc_job = PeriodicTimer::new(
             "Flown Distance Calculator".into(), 
-            10, 
+            FDC_RUN_INTERVAL, 
             FlownDistanceCalculator::calc_distances);
         dist_calc_job.start();
         self.jobs.push(dist_calc_job);
 
-        // realTakeoffLookup = RealTakeoffLookup()
-        // self.realTakeoffLookupTimer = PeriodicTimer(RealTakeoffLookup.RUN_INTERVAL, realTakeoffLookup.checkTakeoffs)
-        // self.realTakeoffLookupTimer.start()
-
+        let mut dist_calc_job = PeriodicTimer::new(
+            "Real Take-off Lookup".into(), 
+            RTL_RUN_INTERVAL, 
+            RealTakeoffLookup::check_takeoffs);
+        dist_calc_job.start();
+        self.jobs.push(dist_calc_job);
+        
         // eventWatcher = EventWatcher()
         // self.eventWatcherTimer = PeriodicTimer(EventWatcher.RUN_INTERVAL, eventWatcher.processEvents)
         // self.eventWatcherTimer.start()
