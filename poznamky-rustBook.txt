@@ -48,7 +48,7 @@ ruzne:
 --
 
 Instalace na cisty tux (virtual ubuntu server):
-    apt pkg-config install libssl-dev build-essential gdal-bin libgdal-dev
+    apt install pkg-config libssl-dev build-essential gdal-bin libgdal-dev
 
 redis-cli 
     Chyba pri zapisu do redisu:
@@ -60,11 +60,10 @@ redis-cli
 
 TODO
 
-* dohledavani skutecneho startu (realTakeoffLookup)
 * posilani statistiky do mqtt
 * kontik?
 
 pozdeji?
 * eventWatcher
 * TowLookup
-* RedisReaper
+* RedisReaper (outlandings)
