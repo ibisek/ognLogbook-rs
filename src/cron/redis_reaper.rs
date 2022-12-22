@@ -143,7 +143,7 @@ impl RedisReaper {
                 let takeoff_event = RedisReaper::find_most_recent_takeoff(&mut mysql, addr, addr_type);
                 if takeoff_event.is_some() {    // create a LANDING logbook_event -> a stored procedure then creates a logbook_entry (flight)
                     let takeoff_event = takeoff_event.unwrap();
-                    println!("TE: {:?}", takeoff_event);
+                    // println!("TE: {:?}", takeoff_event);
 
                     let mut flight_time = ts - takeoff_event.ts;
                     if flight_time < 0 { flight_time = 0; };
