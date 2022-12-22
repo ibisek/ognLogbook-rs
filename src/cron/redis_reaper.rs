@@ -173,8 +173,6 @@ impl RedisReaper {
 
                     num_landed += 1;
                 }
-
-                print!("^66");
             }
         }
 
