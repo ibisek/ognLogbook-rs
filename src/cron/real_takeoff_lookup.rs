@@ -10,7 +10,7 @@ use url::Url;
 
 use ogn_client::data_structures::{AddressType, AircraftType};
 
-use crate::airfield_manager::AirfieldManager;
+use crate::airfield_manager::{AirfieldManager, self};
 use crate::configuration::{AIRFIELDS_FILEPATH, INFLUX_DB_NAME, INFLUX_SERIES_NAME, get_influx_url, get_db_url};
 use crate::db::mysql::MySQL;
 use crate::db::dataframe::{Column, DataFrame};
@@ -106,6 +106,7 @@ impl RealTakeoffLookup {
 
     pub fn check_takeoffs() {
         let mut mysql = MySQL::new();
+        let airfield_manager = AirfieldManager::new(AIRFIELDS_FILEPATH);    // (50ms) !!ultra inefficient to read & parse the file every time!!
 
         let ts = Utc::now().timestamp();
         let mut takeoffs = RealTakeoffLookup::list_takeoffs(ts, &mut mysql);
@@ -159,12 +160,12 @@ impl RealTakeoffLookup {
                 logbook_item.takeoff_lat = latitudes.get_float_value(min_gs_index).unwrap();
                 logbook_item.takeoff_lon = longitudes.get_float_value(min_gs_index).unwrap();
 
-                // if logbook_item.takeoff_icao == "" {
-                //     let takeoff_location = airfield_manager.get_nearest(logbook_item.takeoff_lat, logbook_item.takeoff_lon);
-                //     if takeoff_location.is_some() {
-                //         logbook_item.takeoff_icao = takeoff_location.unwrap();
-                //     }
-                // } 
+                if logbook_item.takeoff_icao == "" {
+                    let takeoff_location = airfield_manager.get_nearest(logbook_item.takeoff_lat, logbook_item.takeoff_lon);
+                    if takeoff_location.is_some() {
+                        logbook_item.takeoff_icao = takeoff_location.unwrap();
+                    }
+                } 
 
                 let location_icao_sql = if logbook_item.takeoff_icao != "" { format!("'{}'", logbook_item.takeoff_icao) } else { "null".into() };
 

@@ -19,17 +19,19 @@ pub trait PeriodicTimerTask {
      thread: Option<thread::JoinHandle<()>>,
      do_run: Arc<AtomicBool>,
      handler: Arc<fn()>,
+    //  handler_argument: Arc<Option<_>>,
     //  task: Arc<dyn PeriodicTimerTask + Sync + Send + 'static>,
  }
  
  impl PeriodicTimer {
-     pub fn new(name: String, interval: u64, handler: fn()) -> PeriodicTimer {
+     pub fn new(name: String, interval: u64, handler: fn() /*, handler_argument: Option<&T>*/) -> PeriodicTimer {
          PeriodicTimer {
              name,
              interval,
              thread: None,
              do_run: Arc::new(AtomicBool::new(true)),
              handler: Arc::new(handler),
+            //  handler_argument: Arc::new(handler_argument),
          }
      }
 
