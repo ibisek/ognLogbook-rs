@@ -7,6 +7,8 @@ mod flown_distance_calculator;
 use flown_distance_calculator::{FlownDistanceCalculator, FDC_RUN_INTERVAL};
 mod real_takeoff_lookup;
 use real_takeoff_lookup::{RealTakeoffLookup, RTL_RUN_INTERVAL};
+mod redis_reaper;
+use redis_reaper::{RedisReaper, RR_RUN_INTERVAL};
 
 pub struct CronJobs {
     jobs: Vec<PeriodicTimer>,
@@ -30,9 +32,12 @@ impl CronJobs {
         // self.towLookupTimer = PeriodicTimer(TowLookup.RUN_INTERVAL, tl.gliderTowLookup)
         // self.towLookupTimer.start()
 
-        // self.rr = RedisReaper()
-        // self.redisReaperTimer = PeriodicTimer(RedisReaper.RUN_INTERVAL, self.rr.doWork)
-        // self.redisReaperTimer.start()
+        let mut redis_reaper_job = PeriodicTimer::new(
+            "Redis Reaper".into(), 
+            RR_RUN_INTERVAL, 
+            RedisReaper::do_work);
+            redis_reaper_job.start();
+        self.jobs.push(redis_reaper_job);
 
         let mut dist_calc_job = PeriodicTimer::new(
             "Flown Distance Calculator".into(), 

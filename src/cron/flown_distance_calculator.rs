@@ -1,7 +1,6 @@
 
 use log::{info, warn};
 
-use mysql::Pool;
 use mysql::Row;
 use mysql::prelude::Queryable;
 use rinfluxdb::influxql::blocking::Client;
@@ -9,7 +8,7 @@ use rinfluxdb::influxql::Query;
 use rinfluxdb_influxql::ClientError;
 use url::Url;
 
-use crate::configuration::{INFLUX_DB_NAME, INFLUX_SERIES_NAME, get_influx_url, get_db_url};
+use crate::configuration::{INFLUX_DB_NAME, INFLUX_SERIES_NAME, get_influx_url};
 use crate::db::dataframe::{Column, DataFrame};
 use crate::db::mysql::MySQL;
 

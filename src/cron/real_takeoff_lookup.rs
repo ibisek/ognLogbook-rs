@@ -1,6 +1,6 @@
 
 use chrono::Utc;
-use log::{info, warn, error};
+use log::{info, error};
 use mysql::Row;
 use mysql::prelude::Queryable;
 use rinfluxdb::influxql::blocking::Client;
@@ -8,67 +8,13 @@ use rinfluxdb::influxql::Query;
 use rinfluxdb_influxql::ClientError;
 use url::Url;
 
-use ogn_client::data_structures::{AddressType, AircraftType};
+use ogn_client::data_structures::AddressType;
 
-use crate::airfield_manager::{AirfieldManager, self};
-use crate::configuration::{AIRFIELDS_FILEPATH, INFLUX_DB_NAME, INFLUX_SERIES_NAME, get_influx_url, get_db_url};
+use crate::airfield_manager::AirfieldManager;
+use crate::configuration::{AIRFIELDS_FILEPATH, INFLUX_DB_NAME, INFLUX_SERIES_NAME, get_influx_url};
 use crate::db::mysql::MySQL;
 use crate::db::dataframe::{Column, DataFrame};
-
-#[derive(Debug, Clone)]
-struct LogbookItem {
-    id: u64, 
-    addr: String, 
-    addr_type: AddressType, 
-    
-    takeoff_ts: i64, 
-    takeoff_lat: f64, 
-    takeoff_lon: f64, 
-    takeoff_icao: String,
-                 
-    landing_ts: i64,
-    landing_lat: f64, 
-    landing_lon: f64, 
-    landing_icao: String,
-                 
-    flight_time: i64, 
-    flown_distance: u64, 
-    device_type: String,
-                 
-    registration: String, 
-    cn: String, 
-    aircraft_type: AircraftType, 
-    tow_id: i64,
-}
-
-impl LogbookItem {
-    pub fn new(id: u64, addr: String, addr_type: AddressType, takeoff_ts: i64, takeoff_icao: String) -> LogbookItem {
-        LogbookItem { 
-            id, 
-            addr, 
-            addr_type,
-
-            takeoff_ts, 
-            takeoff_lat: 0_f64, 
-            takeoff_lon: 0_f64, 
-            takeoff_icao: "".into(), 
-
-            landing_ts: 0_i64, 
-            landing_lat: 0_f64, 
-            landing_lon: 0_f64, 
-            landing_icao: "".into(), 
-            
-            flight_time: 0_i64, 
-            flown_distance: 0_u64, 
-            device_type: "".into(), 
-            
-            registration: "".into(), 
-            cn: "".into(), 
-            aircraft_type: AircraftType::Unknown, 
-            tow_id: 0_i64,
-         }
-    }
-}
+use crate::db::data_structures::LogbookItem;
 
 pub const RTL_RUN_INTERVAL: u64 = 60;    // [s]
 
