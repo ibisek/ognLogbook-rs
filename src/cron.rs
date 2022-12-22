@@ -10,12 +10,14 @@ use real_takeoff_lookup::{RealTakeoffLookup, RTL_RUN_INTERVAL};
 
 pub struct CronJobs {
     jobs: Vec<PeriodicTimer>,
+    // airfield_manager: AirfieldManager,
 }
 
 impl CronJobs {
     pub fn new() -> CronJobs {
         CronJobs {
             jobs: Vec::new(),
+            // airfield_manager: AirfieldManager::new(AIRFIELDS_FILEPATH),
         }
     }
 

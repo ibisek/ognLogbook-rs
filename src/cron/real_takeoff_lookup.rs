@@ -10,7 +10,8 @@ use url::Url;
 
 use ogn_client::data_structures::{AddressType, AircraftType};
 
-use crate::configuration::{INFLUX_DB_NAME, INFLUX_SERIES_NAME, get_influx_url, get_db_url};
+use crate::airfield_manager::AirfieldManager;
+use crate::configuration::{AIRFIELDS_FILEPATH, INFLUX_DB_NAME, INFLUX_SERIES_NAME, get_influx_url, get_db_url};
 use crate::db::mysql::MySQL;
 use crate::db::dataframe::{Column, DataFrame};
 
@@ -71,8 +72,7 @@ impl LogbookItem {
 
 pub const RTL_RUN_INTERVAL: u64 = 60;    // [s]
 
-pub struct RealTakeoffLookup {
-}
+pub struct RealTakeoffLookup {}
 
 impl RealTakeoffLookup {
 
@@ -108,12 +108,12 @@ impl RealTakeoffLookup {
         let mut mysql = MySQL::new();
 
         let ts = Utc::now().timestamp();
-        let takeoffs = RealTakeoffLookup::list_takeoffs(ts, &mut mysql);
+        let mut takeoffs = RealTakeoffLookup::list_takeoffs(ts, &mut mysql);
 
         let influx_db_client = Client::new(Url::parse(&get_influx_url()).unwrap(), Some(("", ""))).unwrap();
 
         let mut num_modified_takeoffs = 0_u64;
-        for logbook_item in takeoffs.iter() {
+        for logbook_item in takeoffs.iter_mut() {
             let addr = format!("{}{}", logbook_item.addr_type.as_long_str(), logbook_item.addr);
             let window_end_ts = logbook_item.takeoff_ts - 2;    // [s]
             let window_start_ts = window_end_ts - 59;           // [s]
@@ -155,17 +155,21 @@ impl RealTakeoffLookup {
             }
 
             if dirty {
-                let takeoff_ts = index[min_gs_index].timestamp();
-                let lat = latitudes.get_float_value(min_gs_index).unwrap();
-                let lon = longitudes.get_float_value(min_gs_index).unwrap();
+                logbook_item.takeoff_ts = index[min_gs_index].timestamp();
+                logbook_item.takeoff_lat = latitudes.get_float_value(min_gs_index).unwrap();
+                logbook_item.takeoff_lon = longitudes.get_float_value(min_gs_index).unwrap();
 
-                if logbook_item.takeoff_icao == "" {
-                    //TODO dohledat
-                } 
+                // if logbook_item.takeoff_icao == "" {
+                //     let takeoff_location = airfield_manager.get_nearest(logbook_item.takeoff_lat, logbook_item.takeoff_lon);
+                //     if takeoff_location.is_some() {
+                //         logbook_item.takeoff_icao = takeoff_location.unwrap();
+                //     }
+                // } 
 
                 let location_icao_sql = if logbook_item.takeoff_icao != "" { format!("'{}'", logbook_item.takeoff_icao) } else { "null".into() };
 
-                let update_sql = format!("UPDATE logbook_events SET ts={}, lat={:.5}, lon={:.5}, location_icao={location_icao_sql} WHERE id={};", takeoff_ts, lat, lon, logbook_item.id);
+                let update_sql = format!("UPDATE logbook_events SET ts={}, lat={:.5}, lon={:.5}, location_icao={location_icao_sql} WHERE id={};", 
+                    logbook_item.takeoff_ts, logbook_item.takeoff_lat, logbook_item.takeoff_lon, logbook_item.id);
 
                 let mut conn = mysql.get_connection();
                 match conn.query_drop(&update_sql) {
