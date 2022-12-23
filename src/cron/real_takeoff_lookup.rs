@@ -103,8 +103,8 @@ impl RealTakeoffLookup {
 
             if dirty {
                 logbook_item.takeoff_ts = index[min_gs_index].timestamp();
-                logbook_item.takeoff_lat = latitudes.get_float_value(min_gs_index).unwrap();
-                logbook_item.takeoff_lon = longitudes.get_float_value(min_gs_index).unwrap();
+                logbook_item.takeoff_lat = latitudes.get_float_value(min_gs_index).unwrap_or(0_f64);
+                logbook_item.takeoff_lon = longitudes.get_float_value(min_gs_index).unwrap_or(0_f64);
 
                 if logbook_item.takeoff_icao == "" {
                     let takeoff_location = airfield_manager.get_nearest(logbook_item.takeoff_lat, logbook_item.takeoff_lon);

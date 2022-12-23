@@ -117,10 +117,10 @@ impl RedisReaper {
             // println!("DF:{}", df);
             let cols = df.columns;
             let ts = df.index[0].timestamp();    // utc ts
-            let agl = cols.get("agl").unwrap().get_int_value(0).unwrap();
-            let gs = cols.get("gs").unwrap().get_int_value(0).unwrap();
-            let lat = cols.get("lat").unwrap().get_float_value(0).unwrap();
-            let lon = cols.get("lon").unwrap().get_float_value(0).unwrap();
+            let agl = cols.get("agl").unwrap().get_int_value(0).unwrap_or(0);
+            let gs = cols.get("gs").unwrap().get_int_value(0).unwrap_or(0);
+            let lat = cols.get("lat").unwrap().get_float_value(0).unwrap_or(0_f64);
+            let lon = cols.get("lon").unwrap().get_float_value(0).unwrap_or(0_f64);
 
             let mut landing_suspected = false;
             if agl > 0 && agl < 100 && gs < RR_GS_THRESHOLD {

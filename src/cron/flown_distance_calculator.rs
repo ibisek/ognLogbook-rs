@@ -53,8 +53,8 @@ impl FlownDistanceCalculator {
         let mut prev_lon = 0_f64;
         let mut total_dist = 0_f64;
         for i in 0..latitudes.len() {
-            let lat = latitudes.get_float_value(i).unwrap().to_radians();
-            let lon = longitudes.get_float_value(i).unwrap().to_radians();
+            let lat = latitudes.get_float_value(i).unwrap_or(0_f64).to_radians();
+            let lon = longitudes.get_float_value(i).unwrap_or(0_f64).to_radians();
             if prev_lat == 0_f64 && prev_lon == 0_f64 {
                 prev_lat = lat;
                 prev_lon = lon;
