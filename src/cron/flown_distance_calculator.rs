@@ -38,7 +38,7 @@ impl FlownDistanceCalculator {
         let res: Result<DataFrame, ClientError> = influx_db_client.fetch_dataframe(query);
 
         if res.is_err() {
-            warn!("FDC: no influx data for '{addr}' between {start_ts} and {end_ts}.");
+            // warn!("FDC: no influx data for '{addr}' between {start_ts} and {end_ts}.");
             return 0_f64;
         }
 
