@@ -78,6 +78,13 @@ impl BeaconProcessor {
         };
     }
 
+    fn del_in_redis(&mut self, key: &str) {
+        match self.redis.del(key) {
+            Ok(_) => (),
+            Err(e) => { error!("upon redis del: {:?}", e); },
+        };
+    }
+
     pub fn process(&mut self, beacon: &mut AircraftBeacon) {
         //we are not interested in para, baloons, uavs and other crazy flying stuff:
         if vec![AircraftType::Undefined, AircraftType::Unknown, AircraftType::Baloon, AircraftType::Airship, AircraftType::Uav, AircraftType::Reserved, AircraftType::Obstacle].contains(&beacon.aircraft_type) {
@@ -157,8 +164,8 @@ impl BeaconProcessor {
                 if flight_time < 120 { return }  // [s]
 
                 if flight_time > 12 * 3600 {    // some relic from the previous day
-                    self.redis.del(&status_key).unwrap();
-                    self.redis.del(&gs_key).unwrap();
+                    self.del_in_redis(&status_key);
+                    self.del_in_redis(&gs_key);
                     return;
                 }
 
