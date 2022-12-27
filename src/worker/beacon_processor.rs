@@ -1,5 +1,5 @@
 use chrono::prelude::*;
-use log::{info, warn};
+use log::{info, warn, error};
 use simple_redis::client::Client;
 use simple_redis::RedisResult;
 
@@ -68,8 +68,14 @@ impl BeaconProcessor {
 
     fn save_to_redis(&mut self, key: &String, value: &String, expiration: usize) {
         // self.redis.set(&key, as_redis_arg!(value));  // TODO az jim to bude jednou fungovat
-        self.redis.run_command::<String>("SET", vec![&key, &value]).unwrap();
-        self.redis.expire(&key, expiration).unwrap();   // REDIS_RECORD_EXPIRATION
+        match self.redis.run_command::<String>("SET", vec![&key, &value]) {
+            Ok(_) => (),
+            Err(e) => { error!("upon redis set: {:?}", e); },
+        };
+        match self.redis.expire(&key, expiration) {
+            Ok(_) => (),
+            Err(e) => { error!("upon redis expiration: {:?}", e); },
+        };
     }
 
     pub fn process(&mut self, beacon: &mut AircraftBeacon) {

@@ -6,7 +6,7 @@ use std::thread;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use chrono::{DateTime, Utc, NaiveDateTime};
-use log::info;
+use log::{info, error};
 use rinfluxdb::line_protocol::{LineBuilder, Line};
 use rinfluxdb::line_protocol::blocking::Client;
 use url::Url;
@@ -95,9 +95,10 @@ impl InfluxWorker {
                         
                         lines.push(line);
                         // if lines.len() >= 10 {    // write records in batches of many
-                            let _res = influx_db_client.send(INFLUX_DB_NAME, &lines);    
-                            lines.clear();
-
+                            match influx_db_client.send(INFLUX_DB_NAME, &lines) {
+                                Ok(_) => { lines.clear(); },
+                                Err(e) => { error!("upon influx send: {:?}", e) },
+                            };    
                             // if DEBUG {
                             //     match res {
                             //         Ok(_) => (), // println!("[INFO] store_position OK"),
