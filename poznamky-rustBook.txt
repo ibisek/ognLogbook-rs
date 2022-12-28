@@ -56,6 +56,13 @@ redis-cli
     Reseni:
         config set stop-writes-on-bgsave-error no
 
+--
+
+PROFILING
+    https://nnethercote.github.io/perf-book/profiling.html
+       https://perf.wiki.kernel.org/index.php/Tutorial
+           # echo 0 > /proc/sys/kernel/perf_event_paranoid
+
 -- 
 
 TODO
