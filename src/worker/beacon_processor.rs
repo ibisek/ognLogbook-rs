@@ -15,6 +15,8 @@ use crate::worker::expiring_dict::ExpiringDict;
 use crate::worker::utils::get_groundspeed_threshold;
 use crate::worker::influx_worker::InfluxWorker;
 
+static SUPPORTED_CRAFTS: [AircraftType; 7] = [AircraftType::Undefined, AircraftType::Unknown, AircraftType::Baloon, AircraftType::Airship, AircraftType::Uav, AircraftType::Reserved, AircraftType::Obstacle];
+
 pub struct BeaconProcessor {
     geo_file: GeoFile,
     redis: Client,
@@ -106,7 +108,7 @@ impl BeaconProcessor {
 
     pub fn process(&mut self, beacon: &mut AircraftBeacon) {
         //we are not interested in para, baloons, uavs and other crazy flying stuff:
-        if vec![AircraftType::Undefined, AircraftType::Unknown, AircraftType::Baloon, AircraftType::Airship, AircraftType::Uav, AircraftType::Reserved, AircraftType::Obstacle].contains(&beacon.aircraft_type) {
+        if SUPPORTED_CRAFTS.contains(&beacon.aircraft_type) {
             // debug!("Skipping AT: {}", &beacon.aircraft_type);
             return;
         }
