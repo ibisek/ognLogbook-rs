@@ -173,6 +173,8 @@ impl BeaconProcessor {
         };
         if prev_gs > 0_f64 { // filter speed change a bit (sometimes there are glitches in speed with badly placed gps antenna):
             gs = gs * 0.7 + prev_gs * 0.3;
+        }
+        if gs > 0_f64 {
             self.save_to_redis(&gs_key, &format!("{:.0}", gs.round()), 3600);
         }
         self.xstop(&beacon.addr_type,"U6");
