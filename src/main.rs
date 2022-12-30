@@ -93,9 +93,9 @@ fn main() -> std::io::Result<()> {
     
     info!("\n\n## OGN LOGBOOK ##\n");
 
-    let mut client: OgnClient = OgnClient::new(OGN_USERNAME)?;
-    client.set_aprs_filter(OGN_APRS_FILTER_LAT, OGN_APRS_FILTER_LON, OGN_APRS_FILTER_RANGE);
-    client.connect();
+    let mut client = Arc::new(Mutex::new(OgnClient::new(OGN_USERNAME)?));
+    client.lock().unwrap().set_aprs_filter(OGN_APRS_FILTER_LAT, OGN_APRS_FILTER_LON, OGN_APRS_FILTER_RANGE);
+    client.lock().unwrap().connect();
 
     let queue_ogn: Arc<Mutex<Queue<AircraftBeacon>>> = Arc::new(Mutex::new(Queue::new()));
     let queue_icao: Arc<Mutex<Queue<AircraftBeacon>>> = Arc::new(Mutex::new(Queue::new()));
@@ -107,24 +107,40 @@ fn main() -> std::io::Result<()> {
         Arc::clone(&queue_icao), 
         Arc::clone(&queue_flarm), 
         Arc::clone(&queue_safesky));
-    client.set_beacon_listener(abl);
+    client.lock().unwrap().set_beacon_listener(abl);
 
+    let mut workers = vec![];
     // create and run workers:
     let mut ogn_worker = Worker::new(AddressType::Ogn, queue_ogn);
     ogn_worker.start();
+    workers.push(ogn_worker);
     let mut icao_worker = Worker::new(AddressType::Icao, queue_icao);
     icao_worker.start();
+    workers.push(icao_worker);
     let mut flarm_worker = Worker::new(AddressType::Flarm, queue_flarm);
     flarm_worker.start();
+    workers.push(flarm_worker);
     let mut safesky_worker = Worker::new(AddressType::SafeSky, queue_safesky);
     safesky_worker.start();
+    workers.push(safesky_worker);
 
     // create and run cron jobs:
     let mut cron = CronJobs::new();
     cron.start();
 
+    // configure the ctrl+c hook:
+    // let cl = Arc::clone(&client);
+    ctrlc::set_handler(
+        move || {
+            info!("Stopping the app!");
+            for w in workers.iter_mut() { w.stop(); }
+            cron.stop();
+            // cl.lock().unwrap().stop();
+        }
+    ).expect("Error setting Ctrl-C handler");
+
     info!("Entering the loop..");
-    client.do_loop();
+    client.lock().unwrap().do_loop();
 
     info!("KOHEU.");
     Ok(())
