@@ -33,7 +33,7 @@ impl FlownDistanceCalculator {
     fn calc_flown_distance(addr: &str, start_ts: i64, end_ts: i64) -> f64 {
         let influx_db_client = Client::new(Url::parse(&get_influx_url()).unwrap(), Some(("", ""))).unwrap();
 
-        let q= format!("SELECT lat, lon FROM {INFLUX_DB_NAME}..{INFLUX_SERIES_NAME} WHERE addr='{addr}' AND time >= {start_ts}000000000 AND time <= {end_ts}000000000");
+        let q= format!("SELECT lat, lon FROM {INFLUX_DB_NAME}..{INFLUX_SERIES_NAME} WHERE addr='{addr}' AND time >= {start_ts}000000000 AND time <= {end_ts}000000000 ORDER BY time");
         let query = Query::new(q);
         let res: Result<DataFrame, ClientError> = influx_db_client.fetch_dataframe(query);
 
