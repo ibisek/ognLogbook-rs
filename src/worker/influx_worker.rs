@@ -121,7 +121,7 @@ impl InfluxWorker {
 
                 // let elapsed = start_ts.elapsed();
                 // if elapsed.as_secs() >= 60 {
-                //     info!("Beacon rate: {}/min", beacon_counter);
+                //     info!("InfluxWorker beacon rate: {}/min", beacon_counter);
                     
                 //     start_ts = Instant::now();
                 //     beacon_counter = 0;
@@ -134,7 +134,10 @@ impl InfluxWorker {
 
     /// Enqueues a beacon for influx insertion.
     pub fn store(&mut self, beacon: &AircraftBeacon) {
-        self.sender.send(beacon.clone()).unwrap();
+        match self.sender.send(beacon.clone()) {
+            Ok(_) => (),
+            Err(e) => error!("When storing a beacon: {:?}", e),
+        }
     }
 
 }
