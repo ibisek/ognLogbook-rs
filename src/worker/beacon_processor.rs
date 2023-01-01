@@ -221,7 +221,7 @@ impl BeaconProcessor {
             let icao_location_str = if icao_location.is_some() {icao_location.clone().unwrap()} else {"?".into()};
             let flight_time_str = if flight_time > 0 { format!("{flight_time}s") } else { "".into() };
             info!("EVENT: {dt_str}; loc: {icao_location_str} [{addres_type_c}] {} {event} {flight_time_str}", beacon.addr);
-            if icao_location_str == "?" && event == 'L' {
+            if icao_location_str == "?" {
                 info!("\txxLOC: {:.5} {:.5}", beacon.lat, beacon.lon);
             }
 
