@@ -1,5 +1,5 @@
 use chrono::prelude::*;
-use log::{info, warn, error};
+use log::{debug, info, warn, error};
 use simple_redis::client::Client;
 use simple_redis::RedisResult;
 
@@ -15,7 +15,7 @@ use crate::worker::expiring_dict::ExpiringDict;
 use crate::worker::utils::get_groundspeed_threshold;
 use crate::worker::influx_worker::InfluxWorker;
 
-static SUPPORTED_CRAFTS: [AircraftType; 7] = [AircraftType::Undefined, AircraftType::Unknown, AircraftType::Baloon, AircraftType::Airship, AircraftType::Uav, AircraftType::Reserved, AircraftType::Obstacle];
+static UNSUPPORTED_CRAFTS: [AircraftType; 6] = [AircraftType::Undefined, AircraftType::Unknown, AircraftType::Baloon, AircraftType::Airship, AircraftType::Uav, AircraftType::Reserved];    // , AircraftType::Obstacle
 
 pub struct BeaconProcessor {
     geo_file: GeoFile,
@@ -100,7 +100,7 @@ impl BeaconProcessor {
             let now = Utc::now().timestamp_micros(); 
             let dur = now - self.t;
             if dur > 1000 {
-                println!("TT {label} {dur} us");
+                // println!("TT {label} {dur} us");
             }
             self.t = now;
         }
@@ -108,8 +108,8 @@ impl BeaconProcessor {
 
     pub fn process(&mut self, beacon: &mut AircraftBeacon) {
         //we are not interested in para, baloons, uavs and other crazy flying stuff:
-        if SUPPORTED_CRAFTS.contains(&beacon.aircraft_type) {
-            // debug!("Skipping AT: {}", &beacon.aircraft_type);
+        if UNSUPPORTED_CRAFTS.contains(&beacon.aircraft_type) {
+            debug!("Skipping AT: {}", &beacon.aircraft_type);
             return;
         }
 
@@ -117,7 +117,7 @@ impl BeaconProcessor {
         let ts = beacon.ts as i64; // UTC [s]
         let now = chrono::offset::Utc::now().timestamp();
         if ts - now > 120 {
-            warn!("Timestamp from the future for {}: {ts}, now is {now} ({}s)", &beacon.addr, ts-now);
+            debug!("Timestamp from the future for {}: {ts}, now is {now} ({}s)", &beacon.addr, ts-now);
             return;
         }
 
@@ -221,6 +221,9 @@ impl BeaconProcessor {
             let icao_location_str = if icao_location.is_some() {icao_location.clone().unwrap()} else {"?".into()};
             let flight_time_str = if flight_time > 0 { format!("{flight_time}s") } else { "".into() };
             info!("EVENT: {dt_str}; loc: {icao_location_str} [{addres_type_c}] {} {event} {flight_time_str}", beacon.addr);
+            if icao_location_str == "?" && event == 'L' {
+                info!("\txxLOC: {:.5} {:.5}", beacon.lat, beacon.lon);
+            }
 
             let icao_location_str = match icao_location {
                 Some(loc) => format!("'{loc}'"),
