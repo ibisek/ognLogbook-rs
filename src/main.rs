@@ -130,14 +130,14 @@ fn main() -> std::io::Result<()> {
 
     // configure the ctrl+c hook:
     // let cl = Arc::clone(&client);
-    ctrlc::set_handler(
-        move || {
-            info!("Stopping the app!");
-            for w in workers.iter_mut() { w.stop(); }
-            cron.stop();
-            // cl.lock().unwrap().stop();
-        }
-    ).expect("Error setting Ctrl-C handler");
+    // ctrlc::set_handler(
+    //     move || {
+    //         info!("Stopping the app!");
+    //         for w in workers.iter_mut() { w.stop(); }
+    //         cron.stop();
+    //         // cl.lock().unwrap().stop();
+    //     }
+    // ).expect("Error setting Ctrl-C handler");
 
     info!("Entering the loop..");
     client.lock().unwrap().do_loop();
