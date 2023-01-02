@@ -15,7 +15,7 @@ use crate::worker::expiring_dict::ExpiringDict;
 use crate::worker::utils::get_groundspeed_threshold;
 use crate::worker::influx_worker::InfluxWorker;
 
-static UNSUPPORTED_CRAFTS: [AircraftType; 6] = [AircraftType::Undefined, AircraftType::Unknown, AircraftType::Baloon, AircraftType::Airship, AircraftType::Uav, AircraftType::Reserved];    // , AircraftType::Obstacle
+static UNSUPPORTED_CRAFTS: [AircraftType; 7] = [AircraftType::Undefined, AircraftType::Unknown, AircraftType::Baloon, AircraftType::Airship, AircraftType::Uav, AircraftType::Reserved, AircraftType::Obstacle];
 
 pub struct BeaconProcessor {
     geo_file: GeoFile,
@@ -221,9 +221,6 @@ impl BeaconProcessor {
             let icao_location_str = if icao_location.is_some() {icao_location.clone().unwrap()} else {"?".into()};
             let flight_time_str = if flight_time > 0 { format!("{flight_time}s") } else { "".into() };
             info!("EVENT: {dt_str}; loc: {icao_location_str} [{addres_type_c}] {} {event} {flight_time_str}", beacon.addr);
-            if icao_location_str == "?" {
-                info!("\txxLOC: {:.5} {:.5}", beacon.lat, beacon.lon);
-            }
 
             let icao_location_str = match icao_location {
                 Some(loc) => format!("'{loc}'"),
