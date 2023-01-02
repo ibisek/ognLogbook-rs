@@ -38,6 +38,7 @@ impl Worker {
     }
 
     pub fn stop(&mut self) {
+        info!("Stopping worker for {}", self.worker_type.as_long_str());
         self.do_run.swap(false, Ordering::Relaxed);
         if let Some(thread) = self.thread.take() {
             thread.join().unwrap();
@@ -53,6 +54,7 @@ impl Worker {
         // vars used by the thread internally:
         let q = Arc::clone(&self.queue);
         let do_run = Arc::clone(&self.do_run);
+        let worker_name = self.worker_type.as_long_str();
 
         let thread = thread::Builder::new().name(self.worker_type.as_long_str()).spawn(
             move || {
@@ -71,6 +73,8 @@ impl Worker {
                         bp.process(&mut beacon);
                     }
                 }
+
+                info!("{} worker thread terminated.", worker_name);
         }).unwrap();
 
         self.thread = Some(thread);
