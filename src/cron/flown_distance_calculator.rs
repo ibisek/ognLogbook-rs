@@ -1,5 +1,5 @@
 
-use log::{info, warn};
+use log::{info, warn, error};
 
 use mysql::Row;
 use mysql::prelude::Queryable;
@@ -38,7 +38,7 @@ impl FlownDistanceCalculator {
         let res: Result<DataFrame, ClientError> = influx_db_client.fetch_dataframe(query);
 
         if res.is_err() {
-            // warn!("FDC: no influx data for '{addr}' between {start_ts} and {end_ts}.");
+            warn!("FDC: no influx data for '{addr}' between {start_ts} and {end_ts}.");
             return 0_f64;
         }
 
@@ -101,16 +101,21 @@ impl FlownDistanceCalculator {
             let dist = FlownDistanceCalculator::calc_flown_distance(&addr, entry.takeoff_ts, entry.landing_ts).round();
             info!("Flown dist for '{addr}' is {dist:.0} km.");
 
-            // save it even if the dist was 0 .. 0 will signalise there was no flight data available; null = to be still calculated
-            let update_sql = format!("UPDATE logbook_entries SET flown_distance={} WHERE id = {};", dist.round(), entry.id);
-            update_sqls.push(update_sql);
+            if dist > 0_f64 {
+                // ?save it even if the dist was 0 .. 0 will signalise there was no flight data available; null = to be still calculated
+                let update_sql = format!("UPDATE logbook_entries SET flown_distance={} WHERE id = {};", dist.round(), entry.id);
+                update_sqls.push(update_sql);
+            }
         }
 
         if update_sqls.len() > 0 {
             info!("Updated {} flown distance(s)", update_sqls.len());
 
             for sql in update_sqls {
-                conn.query_drop(sql).unwrap();
+                match conn.query_drop(&sql) {
+                    Ok(_) => (),
+                    Err(e) => error!("when inserting into db: {e}\n\t{sql}"),
+                }
             }
         }
 
