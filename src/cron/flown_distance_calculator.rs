@@ -1,4 +1,5 @@
 
+use chrono::Utc;
 use log::{info, warn, error};
 
 use mysql::Row;
@@ -73,12 +74,15 @@ impl FlownDistanceCalculator {
 
     pub fn calc_distances() {
         let mut mysql = MySQL::new();
+
+        let interval = Utc::now().timestamp() - (2 * FDC_RUN_INTERVAL as i64);
         
-        let str_sql = "SELECT e.id, e.address, e.address_type, e.takeoff_ts, e.landing_ts
+        let str_sql = format!("SELECT e.id, e.address, e.address_type, e.takeoff_ts, e.landing_ts
         FROM logbook_entries as e
         WHERE e.flown_distance is null 
             AND e.address is not null AND e.address_type is not null AND e.takeoff_ts is not null AND e.landing_ts is not null 
-        LIMIT 100";
+            AND e.landing_ts >= {interval}
+        LIMIT 100");
 
         let mut conn = mysql.get_connection();        
 
