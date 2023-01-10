@@ -31,7 +31,9 @@ pub fn get_db_url() -> String {
 }
 
 pub fn get_influx_url() -> String {
-    format!("http://{DB_HOST}:8086")
+    let db_host = env::var("INFLUX_HOST").unwrap_or(DB_HOST.into());
+    let db_port = env::var("INFLUX_PORT").unwrap_or("8086".into());
+    format!("http://{db_host}:{db_port}")
 }
 pub const INFLUX_DB_NAME: &str = "ogn_logbook";
 pub const INFLUX_SERIES_NAME: &str = "pos";
@@ -39,10 +41,11 @@ pub const INFLUX_SERIES_NAME: &str = "pos";
 
 pub const REDIS_RECORD_EXPIRATION: usize = 8*60*60;   // [s]
 
-const REDIS_URL: &str = "redis://127.0.0.1:6379/";
 pub fn get_redis_url() -> String {
-    // let redis_url = env!("REDIS_URL", "Please set $REDIS_URL");
-    let redis_url = env::var("REDIS_URL").unwrap_or(REDIS_URL.to_string());
+    let redis_host = env::var("REDIS_HOST").unwrap_or(DB_HOST.into());
+    let redis_port = env::var("REDIS_PORT").unwrap_or("6379".into());
+    let redis_url = format!("redis://{redis_host}:{redis_port}");
+    let redis_url = env::var("REDIS_URL").unwrap_or(redis_url);
    
     return redis_url
 }
