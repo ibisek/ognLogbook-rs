@@ -157,4 +157,12 @@ impl AirfieldManager {
         }
     }
 
+    pub fn get_nearest_fn(filepath: &str) -> impl Fn(f64, f64) -> Option<String> {
+        let af = AirfieldManager::new(filepath);
+
+        return move |lat: f64, lon: f64| -> Option<String> {
+            af.get_nearest(lat, lon)
+        };
+    }
+
 }
