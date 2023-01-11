@@ -35,9 +35,10 @@ pub fn get_influx_url() -> String {
     let db_port = env::var("INFLUX_PORT").unwrap_or("8086".into());
     format!("http://{db_host}:{db_port}")
 }
-pub const INFLUX_DB_NAME: &str = "ogn_logbook";
 pub const INFLUX_SERIES_NAME: &str = "pos";
-
+pub fn get_influx_db_name() -> String {
+    return env::var("INFLUX_DB_NAME").unwrap_or(DB_NAME.into())
+}
 
 pub const REDIS_RECORD_EXPIRATION: usize = 8*60*60;   // [s]
 
