@@ -14,7 +14,7 @@ use url::Url;
 
 use ogn_client::data_structures::AircraftBeacon;
 
-use crate::configuration::{INFLUX_DB_NAME, INFLUX_SERIES_NAME, get_influx_url};
+use crate::configuration::{INFLUX_SERIES_NAME, get_influx_url, get_influx_db_name};
 
 // #[derive(InfluxDbWriteable, Clone)]
 #[derive(Clone)]
@@ -39,6 +39,10 @@ pub struct InfluxWorker {
 
 impl InfluxWorker {
     pub fn new() -> InfluxWorker {
+        let influx_url = get_influx_url();
+        let influx_db_name = get_influx_db_name();
+        info!("InfluxDb at {influx_url}/{influx_db_name}");
+
         let (sender, receiver) = unbounded::<AircraftBeacon>();
         Self {
             thread: None,
@@ -102,7 +106,7 @@ impl InfluxWorker {
                 
                 lines.push(line);
                 // if lines.len() >= 10 {    // write records in batches of many
-                    match influx_db_client.send(INFLUX_DB_NAME, &lines) {
+                    match influx_db_client.send(&get_influx_db_name(), &lines) {
                         Ok(_) => { lines.clear(); },
                         Err(e) => { error!("upon influx send: {:?}", e) },
                     };    

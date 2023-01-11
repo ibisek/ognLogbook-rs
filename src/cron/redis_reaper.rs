@@ -2,7 +2,7 @@
 use std::vec;
 
 use chrono::Utc;
-use log::{info, warn};
+use log::info;
 use mysql::prelude::Queryable;
 use mysql::Row;
 use rinfluxdb::influxql::Query;
@@ -10,7 +10,7 @@ use rinfluxdb_influxql::ClientError;
 use ogn_client::data_structures::{AddressType, AircraftType};
 
 use crate::airfield_manager::AirfieldManager;
-use crate::configuration::{INFLUX_DB_NAME, AIRFIELDS_FILEPATH, REDIS_RECORD_EXPIRATION};
+use crate::configuration::{AIRFIELDS_FILEPATH, REDIS_RECORD_EXPIRATION, get_influx_db_name};
 use crate::db::dataframe::DataFrame;
 use crate::db::mysql::MySQL;
 use crate::db::influxdb;
@@ -75,6 +75,7 @@ impl RedisReaper {
         let mut mysql = MySQL::new();
         let influx_db_client = influxdb::get_client();
         let airfield_manager = AirfieldManager::new(AIRFIELDS_FILEPATH);
+        let influx_db_name = get_influx_db_name();
 
         // list all airborne airplanes:
         let res = redis.keys("*status");
@@ -105,7 +106,7 @@ impl RedisReaper {
             let addr_prefix_long = addr_type.as_long_str();
 
             // get last received beacon:
-            let q = format!("SELECT agl, gs, lat, lon FROM {INFLUX_DB_NAME}..pos WHERE addr='{addr_prefix_long}{addr}' ORDER BY time DESC LIMIT 1;");
+            let q = format!("SELECT agl, gs, lat, lon FROM {influx_db_name}..pos WHERE addr='{addr_prefix_long}{addr}' ORDER BY time DESC LIMIT 1;");
             let query = Query::new(&q);
             let res: Result<DataFrame, ClientError> = influx_db_client.fetch_dataframe(query);
             if res.is_err() {

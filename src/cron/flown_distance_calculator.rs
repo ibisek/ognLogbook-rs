@@ -9,7 +9,7 @@ use rinfluxdb::influxql::Query;
 use rinfluxdb_influxql::ClientError;
 use url::Url;
 
-use crate::configuration::{INFLUX_DB_NAME, INFLUX_SERIES_NAME, get_influx_url};
+use crate::configuration::{INFLUX_SERIES_NAME, get_influx_url, get_influx_db_name};
 use crate::db::dataframe::{Column, DataFrame};
 use crate::db::mysql::MySQL;
 
@@ -33,8 +33,9 @@ impl FlownDistanceCalculator {
     /// @param addr: ogn ID with prefix OGN/ICA/FLR
     fn calc_flown_distance(addr: &str, start_ts: i64, end_ts: i64) -> f64 {
         let influx_db_client = Client::new(Url::parse(&get_influx_url()).unwrap(), Some(("", ""))).unwrap();
+        let influx_db_name = get_influx_db_name();
 
-        let q= format!("SELECT lat, lon FROM {INFLUX_DB_NAME}..{INFLUX_SERIES_NAME} WHERE addr='{addr}' AND time >= {start_ts}000000000 AND time <= {end_ts}000000000 ORDER BY time");
+        let q= format!("SELECT lat, lon FROM {influx_db_name}..{INFLUX_SERIES_NAME} WHERE addr='{addr}' AND time >= {start_ts}000000000 AND time <= {end_ts}000000000 ORDER BY time");
         let query = Query::new(q);
         let res: Result<DataFrame, ClientError> = influx_db_client.fetch_dataframe(query);
 

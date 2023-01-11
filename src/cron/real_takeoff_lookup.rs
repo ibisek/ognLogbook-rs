@@ -11,7 +11,7 @@ use url::Url;
 use ogn_client::data_structures::AddressType;
 
 use crate::airfield_manager::AirfieldManager;
-use crate::configuration::{AIRFIELDS_FILEPATH, INFLUX_DB_NAME, INFLUX_SERIES_NAME, get_influx_url};
+use crate::configuration::{AIRFIELDS_FILEPATH, INFLUX_SERIES_NAME, get_influx_url, get_influx_db_name};
 use crate::db::mysql::MySQL;
 use crate::db::dataframe::{Column, DataFrame};
 use crate::db::data_structures::LogbookItem;
@@ -53,6 +53,7 @@ impl RealTakeoffLookup {
     pub fn check_takeoffs() {
         let mut mysql = MySQL::new();
         let airfield_manager = AirfieldManager::new(AIRFIELDS_FILEPATH);    // (50ms) !!ultra inefficient to read & parse the file every time!!
+        let influx_db_name = get_influx_db_name();
 
         let ts = Utc::now().timestamp();
         let mut takeoffs = RealTakeoffLookup::list_takeoffs(ts, &mut mysql);
@@ -66,7 +67,7 @@ impl RealTakeoffLookup {
             let window_start_ts = window_end_ts - 59;           // [s]
 
             // get flight data from influx:
-            let q = format!("SELECT lat, lon, gs FROM {INFLUX_DB_NAME}..{INFLUX_SERIES_NAME} WHERE addr='{addr}' AND time >= {window_start_ts}000000000 AND time <= {window_end_ts}000000000 ORDER BY time DESC");
+            let q = format!("SELECT lat, lon, gs FROM {influx_db_name}..{INFLUX_SERIES_NAME} WHERE addr='{addr}' AND time >= {window_start_ts}000000000 AND time <= {window_end_ts}000000000 ORDER BY time DESC");
             let query = Query::new(q);
             let res: Result<DataFrame, ClientError> = influx_db_client.fetch_dataframe(query);
 
