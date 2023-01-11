@@ -1,5 +1,7 @@
 
+use log::info;
 use mysql::{Pool, PooledConn};
+
 
 use crate::configuration::get_db_url;
 
@@ -13,6 +15,8 @@ impl MySQL {
         let binding = get_db_url();
         let db_url = binding.as_str();
         let pool = Pool::new(db_url).expect("Could not connect to MySQL db!");
+
+        info!("MySQL at {db_url}");
 
         MySQL {
             pool,
