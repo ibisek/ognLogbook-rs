@@ -3,18 +3,22 @@
 use queues::*;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::time::SystemTime;
 
-use log::{info};
+use log::info;
 use simplelog::{ConfigBuilder, SimpleLogger};
 use time::macros::format_description;
 
 mod airfield_manager;
 
-mod configuration;
-use configuration::{LOG_LEVEL, OGN_USERNAME, OGN_APRS_FILTER_LAT, OGN_APRS_FILTER_LON, OGN_APRS_FILTER_RANGE};
+mod aircraft_beacon_listener;
+use aircraft_beacon_listener::AircraftBeaconListener;
 
-use ogn_client::data_structures::{AircraftBeacon, Observer, AddressType};
+mod configuration;
+use configuration::{LOG_LEVEL, get_ogn_username, OGN_APRS_FILTER_LAT, OGN_APRS_FILTER_LON, OGN_APRS_FILTER_RANGE};
+
+mod mqtt;
+
+use ogn_client::data_structures::{AircraftBeacon, AddressType};
 use ogn_client::OgnClient;
 
 mod worker;
@@ -25,65 +29,6 @@ use cron::CronJobs;
 
 mod db;
 
-struct AircraftBeaconListener {
-    beacon_counter: u32,
-    ogn_q: Arc<Mutex<Queue<AircraftBeacon>>>,
-    icao_q: Arc<Mutex<Queue<AircraftBeacon>>>,
-    flarm_q: Arc<Mutex<Queue<AircraftBeacon>>>,
-    safesky_q: Arc<Mutex<Queue<AircraftBeacon>>>,
-    time: SystemTime,
-}
-
-impl AircraftBeaconListener {
-    fn new(ogn_q: Arc<Mutex<Queue<AircraftBeacon>>>, 
-        icao_q: Arc<Mutex<Queue<AircraftBeacon>>>, 
-        flarm_q: Arc<Mutex<Queue<AircraftBeacon>>>,
-        safesky_q: Arc<Mutex<Queue<AircraftBeacon>>>) -> AircraftBeaconListener {
-        Self {
-            beacon_counter:0,
-            ogn_q,
-            icao_q,
-            flarm_q,
-            safesky_q,
-            time: SystemTime::now(),
-        }
-    }
-}
-
-impl Observer<AircraftBeacon> for AircraftBeaconListener {
-    fn notify(&mut self, beacon: AircraftBeacon) {
-        self.beacon_counter += 1;
-
-        if beacon.addr_type == AddressType::Ogn {
-            self.ogn_q.lock().unwrap().add(beacon).unwrap();
-        } else 
-        if beacon.addr_type == AddressType::Icao {
-            self.icao_q.lock().unwrap().add(beacon).unwrap();
-        } else 
-        if beacon.addr_type == AddressType::Flarm {
-            self.flarm_q.lock().unwrap().add(beacon).unwrap();
-        } else
-        if beacon.addr_type == AddressType::SafeSky {
-            self.safesky_q.lock().unwrap().add(beacon).unwrap();
-        } 
-
-        if self.time.elapsed().unwrap().as_secs() >= 60 {
-            let num_ogn = self.ogn_q.lock().unwrap().size();
-            let num_icao = self.icao_q.lock().unwrap().size();
-            let num_flarm = self.flarm_q.lock().unwrap().size();
-            let num_sky = self.safesky_q.lock().unwrap().size();
-            info!("Beacon rate: {}/min, {} queued (O {} / I {} / F {} / S {})", 
-                self.beacon_counter, 
-                num_ogn + num_icao + num_flarm + num_sky,
-                num_ogn, num_icao, num_flarm, num_sky
-            );
-            
-            self.beacon_counter = 0;
-            self.time = SystemTime::now();
-        }
-    }
-}
-
 fn main() -> std::io::Result<()> {
     let config = ConfigBuilder::new()
         .set_target_level(LOG_LEVEL)
@@ -93,7 +38,7 @@ fn main() -> std::io::Result<()> {
     
     info!("\n\n## OGN LOGBOOK ##\n");
 
-    let mut client = Arc::new(Mutex::new(OgnClient::new(OGN_USERNAME)?));
+    let client = Arc::new(Mutex::new(OgnClient::new(&get_ogn_username())?));
     client.lock().unwrap().set_aprs_filter(OGN_APRS_FILTER_LAT, OGN_APRS_FILTER_LON, OGN_APRS_FILTER_RANGE);
     client.lock().unwrap().connect();
 
