@@ -3,7 +3,9 @@ use simplelog::LevelFilter;
 
 pub const LOG_LEVEL: LevelFilter = LevelFilter::Info;
 
-pub const OGN_USERNAME: &str = "rustbook";
+pub fn get_ogn_username() -> String {
+    env::var("OGN_USERNAME").unwrap_or("**".into())
+}
 
 pub const OGN_APRS_FILTER_LAT: f64 = 49.1234;
 pub const OGN_APRS_FILTER_LON: f64 = 16.4567;
@@ -18,8 +20,8 @@ pub const AGL_LANDING_LIMIT: i32 = 100; // [m]
 const DB_HOST: &str = "localhost";
 const DB_PORT: &str = "3306";
 const DB_NAME: &str = "ogn_logbook";
-const DB_USER: &str = "ibisek";
-const DB_PASSWORD: &str = "heslo";
+const DB_USER: &str = "**";
+const DB_PASSWORD: &str = "**";
 pub fn get_db_url() -> String {
     let db_host = env::var("DB_HOST").unwrap_or(DB_HOST.into());
     let db_port = env::var("DB_PORT").unwrap_or(DB_PORT.into());
@@ -49,4 +51,19 @@ pub fn get_redis_url() -> String {
     let redis_url = env::var("REDIS_URL").unwrap_or(redis_url);
    
     return redis_url
+}
+
+const MQTT_ID: &str = "**";
+const MQTT_HOST: &str = "**";
+const MQTT_PORT: &str = "1883";
+const MQTT_USERNAME: &str = "**";
+const MQTT_PASSWORD: &str = "**";
+pub fn get_mqtt_config() -> (String, String,  u16, String, String) {
+    let mqtt_id = env::var("MQTT_ID").unwrap_or(MQTT_ID.into());
+    let mqtt_host = env::var("MQTT_HOST").unwrap_or(MQTT_HOST.into());
+    let mqtt_port = env::var("MQTT_PORT").unwrap_or(MQTT_PORT.into()).parse().unwrap();
+    let mqtt_username= env::var("MQTT_USERNAME").unwrap_or(MQTT_USERNAME.into());
+    let mqtt_password = env::var("MQTT_PASSWORD").unwrap_or(MQTT_PASSWORD.into());
+
+    (mqtt_id, mqtt_host, mqtt_port, mqtt_username, mqtt_password)
 }
