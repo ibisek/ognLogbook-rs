@@ -1,5 +1,5 @@
 
-use log::info;
+use log::debug;
 use mysql::{Pool, PooledConn};
 
 
@@ -16,7 +16,7 @@ impl MySQL {
         let db_url = binding.as_str();
         let pool = Pool::new(db_url).expect("Could not connect to MySQL db!");
 
-        info!("MySQL at {db_url}");
+        debug!("MySQL at {db_url}");
 
         MySQL {
             pool,
