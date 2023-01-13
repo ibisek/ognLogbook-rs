@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use crossbeam::channel::{unbounded, Sender, Receiver};
 use chrono::{DateTime, Utc, NaiveDateTime};
-use log::{info, error};
+use log::{debug, error};
 use rinfluxdb::line_protocol::{LineBuilder, Line};
 use rinfluxdb::line_protocol::blocking::Client;
 use url::Url;
@@ -41,7 +41,7 @@ impl InfluxWorker {
     pub fn new() -> InfluxWorker {
         let influx_url = get_influx_url();
         let influx_db_name = get_influx_db_name();
-        info!("InfluxDb at {influx_url}/{influx_db_name}");
+        debug!("InfluxDb at {influx_url}/{influx_db_name}");
 
         let (sender, receiver) = unbounded::<AircraftBeacon>();
         Self {
