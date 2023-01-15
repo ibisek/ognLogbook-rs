@@ -1,10 +1,15 @@
 use std::env;
+use mysql::serde::__private::de;
 use simplelog::LevelFilter;
 
 pub const LOG_LEVEL: LevelFilter = LevelFilter::Info;
 
 pub fn get_ogn_username() -> String {
     env::var("OGN_USERNAME").unwrap_or("**".into())
+}
+
+pub fn debug() -> bool {
+    env::var("DEBUG").unwrap_or("false".into()).parse().unwrap_or(false)
 }
 
 pub const OGN_APRS_FILTER_LAT: f64 = 49.1234;
@@ -39,7 +44,8 @@ pub fn get_influx_url() -> String {
 }
 pub const INFLUX_SERIES_NAME: &str = "pos";
 pub fn get_influx_db_name() -> String {
-    return env::var("INFLUX_DB_NAME").unwrap_or(DB_NAME.into())
+    let default_db_name = env::var("DB_NAME").unwrap_or(DB_NAME.into());
+    return env::var("INFLUX_DB_NAME").unwrap_or(default_db_name);
 }
 
 pub const REDIS_RECORD_EXPIRATION: usize = 8*60*60;   // [s]
