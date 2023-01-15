@@ -1,4 +1,4 @@
 #!/bin/bash
 
-clear;export RUST_BACKTRACE=1 && . .evn-local && cargo run
+clear;export RUST_BACKTRACE=1 && . .env-local && cargo run
 
