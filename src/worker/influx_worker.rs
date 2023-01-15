@@ -1,5 +1,5 @@
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use std::sync::Arc;
 
 use std::thread;
@@ -73,8 +73,8 @@ impl InfluxWorker {
 
         let thread = thread::spawn(move || {
 
-            let mut start_ts = Instant::now();  //Utc::now().timestamp();
-            let mut beacon_counter = 0;
+            // let mut start_ts = Instant::now();  //Utc::now().timestamp();
+            // let mut beacon_counter = 0;
             let mut lines: Vec<Line> = Vec::new();
 
             while do_run.load(Ordering::Relaxed) {
@@ -121,7 +121,7 @@ impl InfluxWorker {
                     // }
                 // }
 
-                beacon_counter += 1;
+                // beacon_counter += 1;
 
                 // let elapsed = start_ts.elapsed();
                 // if elapsed.as_secs() >= 60 {
