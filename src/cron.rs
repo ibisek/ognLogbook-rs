@@ -1,3 +1,5 @@
+use crate::{airfield_manager::AirfieldManager, configuration::AIRFIELDS_FILEPATH};
+
 use self::periodic_timer::PeriodicTimer;
 
 // pub(crate) mod periodic_timer;
@@ -12,6 +14,10 @@ use redis_reaper::{RedisReaper, RR_RUN_INTERVAL};
 
 pub struct CronJobs {
     jobs: Vec<PeriodicTimer>,
+}
+
+pub trait CronJob {
+    fn cron(&self) -> ();
 }
 
 impl CronJobs {

@@ -31,6 +31,7 @@ impl fmt::Display for AirfieldRecord {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct AirfieldManager {
     airfields_in_quadrants: HashMap<i32, HashMap<i32, Vec<AirfieldRecord>>>,
 }

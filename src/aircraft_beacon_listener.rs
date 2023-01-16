@@ -1,14 +1,12 @@
-use chrono::Timelike;
 use queues::*;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::SystemTime;
 use std::vec;
 
-use chrono::Utc;
 use log::info;
 
-use crate::configuration::get_mqtt_config;
+use crate::configuration::{debug, get_mqtt_config};
 use crate::mqtt::{Mqtt, MqttMessage};
 
 use ogn_client::data_structures::{AircraftBeacon, Observer, AddressType};
@@ -78,32 +76,35 @@ impl Observer<AircraftBeacon> for AircraftBeaconListener {
             let q_len_sky = self.safesky_q.lock().unwrap().size();
             let beacons_rate = self.num_ogn + self.num_icao + self.num_flarm + self.num_sky;
             let beacons_queued = q_len_ogn + q_len_icao + q_len_flarm + q_len_sky;
-            info!("Beacon rate: {}/min, {} queued (O {} / I {} / F {} / S {})", 
+            info!("Beacon rate: {}/min (O {} / I {} / F {} / S {}), {} queued (O {} / I {} / F {} / S {})", 
                 beacons_rate, 
+                self.num_ogn, self.num_icao, self.num_flarm, self.num_sky,
                 beacons_queued,
                 q_len_ogn, q_len_icao, q_len_flarm, q_len_sky
             );
 
-            const LIMIT: u64 = 1000;
-            let mut messages:Vec<MqttMessage> = vec![];
-            if beacons_rate > LIMIT {
-                messages.push(MqttMessage{topic:"ognLogbookRs/rate".into(), payload: format!("{beacons_rate}")});
-                messages.push(MqttMessage{topic:"ognLogbookRs/queued".into(), payload: format!("{beacons_queued}")});
+            if debug() {
+                const LIMIT: u64 = 1000;
+                let mut messages:Vec<MqttMessage> = vec![];
+                if beacons_rate > LIMIT {
+                    messages.push(MqttMessage{topic:"ognLogbookRs/rate".into(), payload: format!("{beacons_rate}")});
+                    messages.push(MqttMessage{topic:"ognLogbookRs/queued".into(), payload: format!("{beacons_queued}")});
+                }
+                if  self.num_ogn > LIMIT {
+                    messages.push(MqttMessage{topic:"ognLogbookRs/ogn".into(), payload: format!("{}", self.num_ogn)});
+                }
+                if  self.num_icao > LIMIT {
+                    messages.push(MqttMessage{topic:"ognLogbookRs/icao".into(), payload: format!("{}", self.num_icao)});
+                }
+                if  self.num_flarm > LIMIT {
+                    messages.push(MqttMessage{topic:"ognLogbookRs/flarm".into(), payload: format!("{}", self.num_flarm)});
+                }
+                if  self.num_sky > LIMIT {
+                    messages.push(MqttMessage{topic:"ognLogbookRs/sky".into(), payload: format!("{}", self.num_sky)});
+                }
+    
+                self.mqtt.send_mqtt_messages(&messages);
             }
-            if  self.num_ogn > LIMIT {
-                messages.push(MqttMessage{topic:"ognLogbookRs/ogn".into(), payload: format!("{}", self.num_ogn)});
-            }
-            if  self.num_icao > LIMIT {
-                messages.push(MqttMessage{topic:"ognLogbookRs/icao".into(), payload: format!("{}", self.num_icao)});
-            }
-            if  self.num_flarm > LIMIT {
-                messages.push(MqttMessage{topic:"ognLogbookRs/flarm".into(), payload: format!("{}", self.num_flarm)});
-            }
-            if  self.num_sky > LIMIT {
-                messages.push(MqttMessage{topic:"ognLogbookRs/sky".into(), payload: format!("{}", self.num_sky)});
-            }
-
-            self.mqtt.send_mqtt_messages(&messages);
 
             self.num_ogn = 0;
             self.num_icao = 0;

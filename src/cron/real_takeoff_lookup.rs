@@ -10,11 +10,13 @@ use url::Url;
 
 use ogn_client::data_structures::AddressType;
 
-use crate::airfield_manager::AirfieldManager;
+use crate::airfield_manager::{AirfieldManager, self};
 use crate::configuration::{AIRFIELDS_FILEPATH, INFLUX_SERIES_NAME, get_influx_url, get_influx_db_name};
 use crate::db::mysql::MySQL;
 use crate::db::dataframe::{Column, DataFrame};
 use crate::db::data_structures::LogbookItem;
+
+use super::CronJob;
 
 pub const RTL_RUN_INTERVAL: u64 = 60;    // [s]
 
@@ -133,5 +135,19 @@ impl RealTakeoffLookup {
             info!("Num take-off amendments: {num_modified_takeoffs}/{}", takeoffs.len());
         }
     }
+
+    // pub fn cron() -> impl Fn() -> () {
+    //     let af = AirfieldManager::new(AIRFIELDS_FILEPATH);
+
+    //     return move || -> () {
+    //         RealTakeoffLookup::check_takeoffs(&af);
+    //     };
+    // }
+
 }
 
+// impl CronJob for RealTakeoffLookup {
+//     fn cron(&self) -> () {
+//         self.check_takeoffs();
+//     }
+// }

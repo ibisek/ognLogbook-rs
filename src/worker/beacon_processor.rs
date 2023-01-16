@@ -1,5 +1,5 @@
 use chrono::prelude::*;
-use log::{debug, info, warn, error};
+use log::{debug, info, error};
 use simple_redis::client::Client;
 use simple_redis::RedisResult;
 
