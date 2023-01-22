@@ -83,7 +83,7 @@ impl Observer<AircraftBeacon> for AircraftBeaconListener {
                 q_len_ogn, q_len_icao, q_len_flarm, q_len_sky
             );
 
-            if debug() {
+            if !debug() {
                 const LIMIT: u64 = 1000;
                 let mut messages:Vec<MqttMessage> = vec![];
                 if beacons_rate > LIMIT {
