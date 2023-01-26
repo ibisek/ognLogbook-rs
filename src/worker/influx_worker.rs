@@ -52,15 +52,15 @@ impl InfluxWorker {
         }
     }
 
+    fn influx_connect() -> Client {
+        Client::new(Url::parse(&get_influx_url()).unwrap(), Some(("", ""))).unwrap()
+    }
+
     pub fn stop(&mut self) {
         self.do_run.swap(false, Ordering::Relaxed);
         if let Some(thread) = self.thread.take() {
             thread.join().expect("joining the thread");
         }
-    }
-
-    fn influx_connect() -> Client {
-        Client::new(Url::parse(&get_influx_url()).unwrap(), Some(("", ""))).unwrap()
     }
 
     pub fn start(&mut self) {
@@ -81,6 +81,7 @@ impl InfluxWorker {
             // let mut beacon_counter = 0;
             let mut lines: Vec<Line> = Vec::new();
 
+            let mut tag = 0;
             while do_run.load(Ordering::Relaxed) {
                 let beacon = incoming.recv();
 
@@ -104,29 +105,22 @@ impl InfluxWorker {
                     .insert_field("lon", pos.lon)
                     .insert_field("tr", pos.tr)
                     .insert_field("vs", pos.vs)
+                    .insert_tag("tag", format!("{tag}"))
                     .build();
-            
+                
                 // println!("[INFO] line: {}", line);
+                tag += 1;   // TAG is here to allow multi-line / batch write into influx. It doesn't work without that!
                 
                 lines.push(line);
-                // if lines.len() >= 10 {    // write records in batches of many
+                if lines.len() >= 5000 || !do_run.load(Ordering::Relaxed) {    // https://docs.influxdata.com/influxdb/v2.1/write-data/best-practices/optimize-writes/
                     match influx_db_client.send(&get_influx_db_name(), &lines) {
                         Ok(_) => { lines.clear(); },
                         Err(e) => { 
                             error!("upon influx send: {:?}", e);
                             influx_db_client = InfluxWorker::influx_connect();
                         },
-                    };    
-                    // if DEBUG {
-                    //     match res {
-                    //         Ok(_) => (), // println!("[INFO] store_position OK"),
-                    //         Err(err) =>  {
-                    //             error!("[ERROR] storePos FAILED: {:?}", err);
-                    //             panic!("[ERROR] storePos FAILED: {:?}", err)
-                    //         }
-                    //     }
-                    // }
-                // }
+                    };
+                }
 
                 // beacon_counter += 1;
 
