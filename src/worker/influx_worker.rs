@@ -38,9 +38,8 @@ pub struct InfluxWorker {
 }
 
 impl InfluxWorker {
-    pub fn new() -> InfluxWorker {
+    pub fn new(influx_db_name: String) -> InfluxWorker {
         let influx_url = get_influx_url();
-        let influx_db_name = get_influx_db_name();
         debug!("InfluxDb at {influx_url}/{influx_db_name}");
 
         let (sender, receiver) = unbounded::<AircraftBeacon>();
@@ -74,14 +73,13 @@ impl InfluxWorker {
         let mut influx_db_client = InfluxWorker::influx_connect();
         let incoming = self.receiver.clone();
 
-
         let thread = thread::spawn(move || {
 
             // let mut start_ts = Instant::now();  //Utc::now().timestamp();
             // let mut beacon_counter = 0;
             let mut lines: Vec<Line> = Vec::new();
 
-            let mut tag = 0;
+            let mut tag = 0;    // TAG is here to allow multi-line / batch write into influx. It doesn't work without that!
             while do_run.load(Ordering::Relaxed) {
                 let beacon = incoming.recv();
 
@@ -109,7 +107,7 @@ impl InfluxWorker {
                     .build();
                 
                 // println!("[INFO] line: {}", line);
-                tag += 1;   // TAG is here to allow multi-line / batch write into influx. It doesn't work without that!
+                tag += 1;
                 
                 lines.push(line);
                 if lines.len() >= 5000 || !do_run.load(Ordering::Relaxed) {    // https://docs.influxdata.com/influxdb/v2.1/write-data/best-practices/optimize-writes/
