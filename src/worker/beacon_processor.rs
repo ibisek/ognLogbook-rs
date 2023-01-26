@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use chrono::prelude::*;
 use log::{debug, info, error};
 use simple_redis::client::Client;
@@ -5,7 +7,7 @@ use simple_redis::RedisResult;
 
 use ogn_client::data_structures::{AircraftBeacon, AircraftType, AddressType};
 
-use crate::configuration::{GEOTIFF_FILEPATH, REDIS_RECORD_EXPIRATION, AIRFIELDS_FILEPATH, get_db_url, AGL_LANDING_LIMIT};
+use crate::configuration::{GEOTIFF_FILEPATH, REDIS_RECORD_EXPIRATION, AIRFIELDS_FILEPATH, get_db_url, AGL_LANDING_LIMIT, get_influx_db_name};
 use crate::airfield_manager::AirfieldManager;
 use crate::db::redis;
 use crate::worker::data_structures::{AircraftStatus, AircraftStatusWithTs};
@@ -14,8 +16,12 @@ use crate::worker::db_thread::DbThread;
 use crate::worker::expiring_dict::ExpiringDict;
 use crate::worker::utils::get_groundspeed_threshold;
 use crate::worker::influx_worker::InfluxWorker;
+use crate::worker::permanent_storage::PermanentStorageFactory;
 
-static UNSUPPORTED_CRAFTS: [AircraftType; 7] = [AircraftType::Undefined, AircraftType::Unknown, AircraftType::Baloon, AircraftType::Airship, AircraftType::Uav, AircraftType::Reserved, AircraftType::Obstacle];
+use super::permanent_storage::PermanentStorage;
+
+// static UNSUPPORTED_CRAFTS: [AircraftType; 7] = [AircraftType::Undefined, AircraftType::Unknown, AircraftType::Baloon, AircraftType::Airship, AircraftType::Uav, AircraftType::Reserved, AircraftType::Obstacle];
+static UNSUPPORTED_CRAFTS: [AircraftType; 6] = [AircraftType::Undefined, AircraftType::Unknown, AircraftType::Baloon, AircraftType::Airship, AircraftType::Uav, AircraftType::Reserved];
 
 pub struct BeaconProcessor {
     geo_file: GeoFile,
@@ -24,17 +30,22 @@ pub struct BeaconProcessor {
     db_thread: DbThread,
     beacon_duplicate_cache:ExpiringDict<String, bool>,
     influx_worker: InfluxWorker,
+    influx_worker_ps: InfluxWorker,
     t: i64,
+    permanent_storage: Arc<PermanentStorage>,
 }
 
 impl BeaconProcessor {
 
-    pub fn new() -> BeaconProcessor {
+    pub fn new(addr_type: &AddressType) -> BeaconProcessor {
         let mut db_thread = DbThread::new(&get_db_url());
         db_thread.start();
 
-        let mut influx_worker = InfluxWorker::new();
+        let mut influx_worker = InfluxWorker::new(get_influx_db_name().into());
         influx_worker.start();
+
+        let mut influx_worker_ps = InfluxWorker::new(get_influx_db_name()+"_ps");   // permanent storage
+        influx_worker_ps.start();
 
         BeaconProcessor { 
             geo_file: GeoFile::new(GEOTIFF_FILEPATH), 
@@ -43,7 +54,9 @@ impl BeaconProcessor {
             db_thread: db_thread,
             beacon_duplicate_cache: ExpiringDict::new(1000),
             influx_worker,
+            influx_worker_ps,
             t: 0,
+            permanent_storage: PermanentStorageFactory::instance().storage_for(&addr_type),
         }
     }
 
@@ -131,7 +144,11 @@ impl BeaconProcessor {
 
                 
         // store the beacon into influxdb:
-        self.influx_worker.store(&beacon);
+        if self.permanent_storage.eligible4ps(&beacon.addr) {
+            self.influx_worker_ps.store(&beacon);
+        } else {
+            self.influx_worker.store(&beacon);
+        }
         self.xstop(&beacon.addr_type,"U2");
 
         let addres_type_c = beacon.addr_type.as_short_str();
@@ -164,8 +181,8 @@ impl BeaconProcessor {
             let status = AircraftStatusWithTs::new(AircraftStatus::OnGround, beacon.ts);
             self.save_to_redis(&status_key, &status.as_redis_str(), REDIS_RECORD_EXPIRATION);
             self.save_to_redis(&gs_key, &0.to_string(), 120); // gs = 0
-            self.xstop(&beacon.addr_type,"U5");
         }
+        self.xstop(&beacon.addr_type,"U5");
 
         let prev_gs = match self.get_from_redis(&gs_key) {
             Ok(gs) => gs.parse().unwrap_or(0_f64),

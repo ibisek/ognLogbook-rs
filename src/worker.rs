@@ -18,6 +18,7 @@ mod db_thread;
 mod expiring_dict;
 mod geo_file;
 mod influx_worker;
+mod permanent_storage;
 mod utils;
 
 pub struct Worker {
@@ -32,7 +33,7 @@ impl Worker {
         Self {
             thread: None, //Some(thread),
             do_run: Arc::new(AtomicBool::new(true)),
-            worker_type: worker_type,
+            worker_type,
             queue: queue,
         }
     }
@@ -55,11 +56,12 @@ impl Worker {
         let q = Arc::clone(&self.queue);
         let do_run = Arc::clone(&self.do_run);
         let worker_name = self.worker_type.as_long_str();
+        let worker_type = self.worker_type.clone();
 
         let thread = thread::Builder::new().name(self.worker_type.as_long_str()).spawn(
             move || {
                 // let mut geo_file = GeoFile::new(GEOTIFF_FILEPATH);
-                let mut bp = BeaconProcessor::new();
+                let mut bp = BeaconProcessor::new(&worker_type);
 
                 while do_run.load(Ordering::Relaxed) {
                     let num_queued = q.lock().unwrap().size();
