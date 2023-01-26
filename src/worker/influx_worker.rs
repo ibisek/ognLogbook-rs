@@ -59,6 +59,10 @@ impl InfluxWorker {
         }
     }
 
+    fn influx_connect() -> Client {
+        Client::new(Url::parse(&get_influx_url()).unwrap(), Some(("", ""))).unwrap()
+    }
+
     pub fn start(&mut self) {
         if self.thread.is_some() {
             println!("[WARN] Refused to start influx_worker thread. The thread is already running!");
@@ -67,7 +71,7 @@ impl InfluxWorker {
 
         // vars used by the thread internally:
         let do_run = Arc::clone(&self.do_run);
-        let influx_db_client = Client::new(Url::parse(&get_influx_url()).unwrap(), Some(("", ""))).unwrap();
+        let mut influx_db_client = InfluxWorker::influx_connect();
         let incoming = self.receiver.clone();
 
 
@@ -108,7 +112,10 @@ impl InfluxWorker {
                 // if lines.len() >= 10 {    // write records in batches of many
                     match influx_db_client.send(&get_influx_db_name(), &lines) {
                         Ok(_) => { lines.clear(); },
-                        Err(e) => { error!("upon influx send: {:?}", e) },
+                        Err(e) => { 
+                            error!("upon influx send: {:?}", e);
+                            influx_db_client = InfluxWorker::influx_connect();
+                        },
                     };    
                     // if DEBUG {
                     //     match res {
