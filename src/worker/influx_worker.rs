@@ -79,7 +79,6 @@ impl InfluxWorker {
             // let mut beacon_counter = 0;
             let mut lines: Vec<Line> = Vec::new();
 
-            let mut tag = 0;    // TAG is here to allow multi-line / batch write into influx. It doesn't work without that!
             while do_run.load(Ordering::Relaxed) {
                 let beacon = incoming.recv();
 
@@ -89,13 +88,13 @@ impl InfluxWorker {
                 }
 
                 let beacon = beacon.unwrap();
-                let pos = beacon_into_position(beacon);
+                let pos = beacon_into_position(&beacon);
 
                 // time                addr      agl alt gs lat       lon       tr vs
                 // 1655046041000000000 OGN414931 0   504 0  49.368367 16.114133 0  0
                 let line = LineBuilder::new(INFLUX_SERIES_NAME)
+                    .insert_tag("addr", format!("{}", pos.addr))
                     .insert_field("time", pos.time.timestamp_nanos())
-                    .insert_field("addr", pos.addr)
                     .insert_field("agl", pos.agl as i64)
                     .insert_field("alt", pos.alt as i64)
                     .insert_field("gs", pos.gs as i64)
@@ -103,14 +102,12 @@ impl InfluxWorker {
                     .insert_field("lon", pos.lon)
                     .insert_field("tr", pos.tr)
                     .insert_field("vs", pos.vs)
-                    .insert_tag("tag", format!("{tag}"))
                     .build();
                 
-                // println!("[INFO] line: {}", line);
-                tag += 1;
+                println!("[INFO] line: {}", line);
                 
                 lines.push(line);
-                if lines.len() >= 5000 || !do_run.load(Ordering::Relaxed) {    // https://docs.influxdata.com/influxdb/v2.1/write-data/best-practices/optimize-writes/
+                // if lines.len() >= 1000 || !do_run.load(Ordering::Relaxed) {    // https://docs.influxdata.com/influxdb/v2.1/write-data/best-practices/optimize-writes/
                     match influx_db_client.send(&get_influx_db_name(), &lines) {
                         Ok(_) => { lines.clear(); },
                         Err(e) => { 
@@ -118,7 +115,7 @@ impl InfluxWorker {
                             influx_db_client = InfluxWorker::influx_connect();
                         },
                     };
-                }
+                // }
 
                 // beacon_counter += 1;
 
@@ -145,7 +142,7 @@ impl InfluxWorker {
 
 }
 
-pub(crate) fn beacon_into_position(beacon: AircraftBeacon) -> Position{
+pub(crate) fn beacon_into_position(beacon: &AircraftBeacon) -> Position{
     // time                addr      agl alt gs lat       lon       tr vs
     // 1655046041000000000 OGN414931 0   504 0  49.368367 16.114133 0  0
 
