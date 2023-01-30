@@ -1,3 +1,10 @@
+-- 
+
+INFLUXDB permanent storage configuration
+    max-values-per-tag = 0
+    (=limit of records to be stored under one tag (address) - default (10k) too low for PS)
+
+--
 
 http://wiki.glidernet.org/wiki:ogn-flavoured-aprs
 
@@ -63,14 +70,15 @@ PROFILING
        https://perf.wiki.kernel.org/index.php/Tutorial
            # echo 0 > /proc/sys/kernel/perf_event_paranoid
 
--- 
+--
 
 TODO
 
-* posilani statistiky do mqtt
-* kontik?
-
-pozdeji?
-* eventWatcher
-* TowLookup
-* RedisReaper (outlandings)
+soon:
+    *
+    
+later?
+    * eventWatcher
+    * TowLookup
+    * RedisReaper (outlandings)
+    * watcher/search tool for lost/stolen trackers/gliders
