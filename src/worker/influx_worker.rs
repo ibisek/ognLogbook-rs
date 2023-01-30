@@ -1,5 +1,5 @@
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use std::sync::Arc;
 
 use std::thread;
@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use crossbeam::channel::{unbounded, Sender, Receiver};
 use chrono::{DateTime, Utc, NaiveDateTime};
-use log::{debug, error};
+use log::{info, debug, error};
 use rinfluxdb::line_protocol::{LineBuilder, Line};
 use rinfluxdb::line_protocol::blocking::Client;
 use url::Url;
@@ -35,6 +35,7 @@ pub struct InfluxWorker {
     do_run: Arc<AtomicBool>,
     sender: Sender<AircraftBeacon>,
     receiver: Receiver<AircraftBeacon>,
+    influx_db_name: String,
 }
 
 impl InfluxWorker {
@@ -48,6 +49,7 @@ impl InfluxWorker {
             do_run: Arc::new(AtomicBool::new(true)),
             sender,
             receiver,
+            influx_db_name,
         }
     }
 
@@ -72,6 +74,7 @@ impl InfluxWorker {
         let do_run = Arc::clone(&self.do_run);
         let mut influx_db_client = InfluxWorker::influx_connect();
         let incoming = self.receiver.clone();
+        let influx_db_name = self.influx_db_name.clone();
 
         let thread = thread::spawn(move || {
 
@@ -104,11 +107,11 @@ impl InfluxWorker {
                     .insert_field("vs", pos.vs)
                     .build();
                 
-                println!("[INFO] line: {}", line);
+                // println!("[INFO] line: {}", line);
                 
                 lines.push(line);
                 // if lines.len() >= 1000 || !do_run.load(Ordering::Relaxed) {    // https://docs.influxdata.com/influxdb/v2.1/write-data/best-practices/optimize-writes/
-                    match influx_db_client.send(&get_influx_db_name(), &lines) {
+                    match influx_db_client.send(&influx_db_name, &lines) {
                         Ok(_) => { lines.clear(); },
                         Err(e) => { 
                             error!("upon influx send: {:?}", e);
