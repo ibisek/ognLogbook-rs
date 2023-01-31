@@ -1,6 +1,8 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use chrono::prelude::*;
+use lazy_static::lazy_static;
 use log::{debug, info, error};
 use simple_redis::client::Client;
 use simple_redis::RedisResult;
@@ -21,7 +23,7 @@ use crate::worker::permanent_storage::PermanentStorageFactory;
 use super::permanent_storage::PermanentStorage;
 
 // static UNSUPPORTED_CRAFTS: [AircraftType; 7] = [AircraftType::Undefined, AircraftType::Unknown, AircraftType::Baloon, AircraftType::Airship, AircraftType::Uav, AircraftType::Reserved, AircraftType::Obstacle];
-static UNSUPPORTED_CRAFTS: [AircraftType; 6] = [AircraftType::Undefined, AircraftType::Unknown, AircraftType::Baloon, AircraftType::Airship, AircraftType::Uav, AircraftType::Reserved];
+// static UNSUPPORTED_CRAFTS: [AircraftType; 6] = [AircraftType::Undefined, AircraftType::Unknown, AircraftType::Baloon, AircraftType::Airship, AircraftType::Uav, AircraftType::Reserved];
 
 pub struct BeaconProcessor {
     geo_file: GeoFile,
@@ -120,6 +122,12 @@ impl BeaconProcessor {
     }
 
     pub fn process(&mut self, beacon: &mut AircraftBeacon) {
+        lazy_static! {
+            static ref UNSUPPORTED_CRAFTS: HashSet<AircraftType> = 
+                vec![AircraftType::Undefined, AircraftType::Unknown, AircraftType::Baloon, AircraftType::Airship, AircraftType::Uav, AircraftType::Reserved]
+                .into_iter().collect();
+        }
+
         //we are not interested in para, baloons, uavs and other crazy flying stuff:
         if UNSUPPORTED_CRAFTS.contains(&beacon.aircraft_type) {
             debug!("Skipping AT: {}", &beacon.aircraft_type);
