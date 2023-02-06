@@ -39,7 +39,9 @@ fn main() -> std::io::Result<()> {
     info!("\n\n## OGN LOGBOOK ##\n");
 
     let client = Arc::new(Mutex::new(OgnClient::new(&get_ogn_username())?));
-    client.lock().unwrap().set_aprs_filter(OGN_APRS_FILTER_LAT, OGN_APRS_FILTER_LON, OGN_APRS_FILTER_RANGE);
+    if OGN_APRS_FILTER_RANGE > 0_u32 {
+        client.lock().unwrap().set_aprs_filter(OGN_APRS_FILTER_LAT, OGN_APRS_FILTER_LON, OGN_APRS_FILTER_RANGE);
+    }
     client.lock().unwrap().connect();
 
     let queue_ogn: Arc<Mutex<Queue<AircraftBeacon>>> = Arc::new(Mutex::new(Queue::new()));
