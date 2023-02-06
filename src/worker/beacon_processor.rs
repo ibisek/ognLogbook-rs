@@ -245,7 +245,12 @@ impl BeaconProcessor {
             let dt_str = DateTime::<Utc>::from_utc(naive, Utc).format("%H:%M:%S");
             let icao_location_str = if icao_location.is_some() {icao_location.clone().unwrap()} else {"?".into()};
             let flight_time_str = if flight_time > 0 { format!("{flight_time}s") } else { "".into() };
-            info!("EVENT: {dt_str}; loc: {icao_location_str} [{addres_type_c}] {} {event} {flight_time_str}", beacon.addr);
+            if icao_location_str == "?" {
+                info!("EVENT: {dt_str}; loc: {icao_location_str} [{addres_type_c}] {} {event} {flight_time_str} | {:.5} {:.5}", beacon.addr, beacon.lat, beacon.lon);
+            } else {
+                info!("EVENT: {dt_str}; loc: {icao_location_str} [{addres_type_c}] {} {event} {flight_time_str}", beacon.addr);
+            }
+            
 
             let icao_location_str = match icao_location {
                 Some(loc) => format!("'{loc}'"),
