@@ -151,7 +151,7 @@ impl AirfieldManager {
             }
         }
 
-        if min_dist < 5.0 {  // [km]
+        if min_dist < 8.0 {  // [km]
             code
         } else {
             None
