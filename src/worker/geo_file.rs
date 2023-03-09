@@ -1,4 +1,4 @@
-use log::{info};
+use log::{info, error};
 
 use gdal::Dataset;
 use gdal::spatial_ref::{SpatialRef, CoordTransform};
@@ -52,7 +52,13 @@ impl GeoFile {
         let mut xs = [lat];
         let mut ys = [lon];
         let mut zs = [];
-        self.ct.transform_coords(&mut xs, &mut ys, &mut zs).unwrap();
+        match self.ct.transform_coords(&mut xs, &mut ys, &mut zs) {
+            Ok(_) => (),
+            Err(_) => {
+                error!("Wrong argumens into transform_coords(): lat:'{:.4}'; lon:'{:.4}'", lat, lon);
+                return None // wrongly parsed coords were passed?
+            },
+        }
         
         // let x = xs[0];
         // let y = ys[0];
