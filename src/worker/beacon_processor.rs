@@ -150,7 +150,6 @@ impl BeaconProcessor {
         }
         self.xstop(&beacon.addr_type,"U1");
 
-                
         // store the beacon into influxdb:
         if self.permanent_storage.eligible4ps(&beacon.addr) {
             self.influx_worker_ps.store(&beacon);
