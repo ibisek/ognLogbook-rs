@@ -2,7 +2,7 @@
 use std::time::{Duration, Instant};
 use std::sync::Arc;
 
-use std::thread;
+use std::{thread, num};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crossbeam::channel::{unbounded, Sender, Receiver};
@@ -14,7 +14,9 @@ use url::Url;
 
 use ogn_client::data_structures::AircraftBeacon;
 
-use crate::configuration::{INFLUX_SERIES_NAME, get_influx_url, get_influx_db_name};
+use crate::configuration::{INFLUX_SERIES_NAME, get_influx_url, get_influx_db_name, INFLUX_BATCH_SIZE};
+use crate::worker::python_influx_bridge::PythonInfluxBridge;
+
 
 // #[derive(InfluxDbWriteable, Clone)]
 #[derive(Clone)]
@@ -110,7 +112,9 @@ impl InfluxWorker {
                 // println!("[INFO] line: {}", line);
                 
                 lines.push(line);
-                // if lines.len() >= 1000 || !do_run.load(Ordering::Relaxed) {    // https://docs.influxdata.com/influxdb/v2.1/write-data/best-practices/optimize-writes/
+
+                // if lines.len() >= INFLUX_BATCH_SIZE || !do_run.load(Ordering::Relaxed) {    // https://docs.influxdata.com/influxdb/v2.1/write-data/best-practices/optimize-writes/
+                    // XXX line by line as the client cannot send multiple lines XXX
                     match influx_db_client.send(&influx_db_name, &lines) {
                         Ok(_) => { lines.clear(); },
                         Err(e) => { 
@@ -118,6 +122,20 @@ impl InfluxWorker {
                             influx_db_client = InfluxWorker::influx_connect();
                         },
                     };
+
+                    // -- or via python bridge -- (does not really work either)
+
+                    // let mut queries:Vec<String> = vec![];
+                    // for l in &lines {
+                    //     queries.push(l.to_string());
+                    // }
+                    
+                    // let queries_str = queries.join(";\n");
+
+                    // let num_accepted = PythonInfluxBridge::insert_into(&influx_db_name.clone(), (&queries_str).to_string());
+                    // if num_accepted == INFLUX_BATCH_SIZE as u64 {
+                    //     lines.clear();
+                    // }
                 // }
 
                 // beacon_counter += 1;

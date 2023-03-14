@@ -20,6 +20,7 @@ mod geo_file;
 mod influx_worker;
 mod permanent_storage;
 mod utils;
+mod python_influx_bridge;
 
 pub struct Worker {
     thread: Option<thread::JoinHandle<()>>,

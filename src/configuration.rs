@@ -1,5 +1,4 @@
 use std::env;
-use mysql::serde::__private::de;
 use simplelog::LevelFilter;
 
 pub const LOG_LEVEL: LevelFilter = LevelFilter::Info;
@@ -47,6 +46,8 @@ pub fn get_influx_db_name() -> String {
     let default_db_name = env::var("DB_NAME").unwrap_or(DB_NAME.into());
     return env::var("INFLUX_DB_NAME").unwrap_or(default_db_name);
 }
+
+pub const INFLUX_BATCH_SIZE: usize = 4000;  // influx db shall be optimized to batches of 4k
 
 pub const REDIS_RECORD_EXPIRATION: usize = 8*60*60;   // [s]
 
