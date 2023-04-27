@@ -30,6 +30,7 @@ pub struct Position {
     pub lon: f64,
     pub tr: f64,
     pub vs: f64,
+    pub ss: f64,
 }
 
 pub struct InfluxWorker {
@@ -107,6 +108,7 @@ impl InfluxWorker {
                     .insert_field("lon", pos.lon)
                     .insert_field("tr", pos.tr)
                     .insert_field("vs", pos.vs)
+                    .insert_field("ss", pos.ss.round() as i64)
                     .build();
                 
                 // println!("[INFO] line: {}", line);
@@ -164,8 +166,8 @@ impl InfluxWorker {
 }
 
 pub(crate) fn beacon_into_position(beacon: &AircraftBeacon) -> Position{
-    // time                addr      agl alt gs lat       lon       tr vs
-    // 1655046041000000000 OGN414931 0   504 0  49.368367 16.114133 0  0
+    // time                addr      agl alt gs lat       lon       tr vs ss
+    // 1655046041000000000 OGN414931 0   504 0  49.368367 16.114133 0  0  123
 
     let dt = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp_opt(beacon.ts as i64, 0).unwrap(), Utc);
 
@@ -179,6 +181,7 @@ pub(crate) fn beacon_into_position(beacon: &AircraftBeacon) -> Position{
         lon: beacon.lon,
         tr: beacon.turn_rate,
         vs: beacon.climb_rate,
+        ss: beacon.signal_strength,
     };
 
     position
