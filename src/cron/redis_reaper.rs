@@ -1,5 +1,6 @@
 
 use std::vec;
+use log::warn;
 
 use chrono::Utc;
 use log::info;
@@ -71,8 +72,14 @@ impl RedisReaper {
     }
 
     pub fn do_work() {
+        let mysql_pool = MySQL::new();
+        if mysql_pool.is_err() {
+            warn!("Could not obtain MySQL connection, skipping do_work().");
+            return;
+        }
+        let mut mysql = mysql_pool.unwrap();
+
         let mut redis = redis::get_client();
-        let mut mysql = MySQL::new();
         let influx_db_client = influxdb::get_client();
         let airfield_manager = AirfieldManager::new(AIRFIELDS_FILEPATH);
         let influx_db_name = get_influx_db_name();

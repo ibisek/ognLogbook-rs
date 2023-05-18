@@ -1,6 +1,7 @@
 
 use std::collections::{HashSet, HashMap};
 use std::sync::{Arc, Once};
+use log::warn;
 
 use mysql::Row;
 use mysql::prelude::Queryable;
@@ -22,21 +23,27 @@ impl PermanentStorage {
     }
 
     pub fn reload(&mut self) {
-        let mut mysql = MySQL::new();
-        let mut conn = mysql.get_connection();
+        match MySQL::new() {
+            Err(e) => {
+                warn!("Could not obtain MySQL connection, skipping reload().");
+            },
+            Ok(mut mysql) => {
+                let mut conn = mysql.get_connection();
 
-        let q = format!("SELECT addr FROM permanent_storage WHERE addr_type='{}' AND active=true", self.address_type);
-        let new_entries: Vec<String> = conn.query_map(q, 
-            |mut row: Row| {
-                let addr = row.take("addr").unwrap();
-                addr
-            }
-        ).unwrap();
+                let q = format!("SELECT addr FROM permanent_storage WHERE addr_type='{}' AND active=true", self.address_type);
+                let new_entries: Vec<String> = conn.query_map(q, 
+                    |mut row: Row| {
+                        let addr = row.take("addr").unwrap();
+                        addr
+                    }
+                ).unwrap();
 
-        self.entries.clear();
-        for e in new_entries {
-            self.entries.insert(e);
-        }
+                self.entries.clear();
+                for e in new_entries {
+                    self.entries.insert(e);
+                }
+            },
+        };
     }
 
     /// Is specified address' data eligible for permanent storage?

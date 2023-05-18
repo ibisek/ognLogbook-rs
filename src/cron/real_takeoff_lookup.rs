@@ -1,6 +1,6 @@
 
 use chrono::Utc;
-use log::{info, error};
+use log::{info, warn, error};
 use mysql::Row;
 use mysql::prelude::Queryable;
 use rinfluxdb::influxql::blocking::Client;
@@ -10,13 +10,13 @@ use url::Url;
 
 use ogn_client::data_structures::AddressType;
 
-use crate::airfield_manager::{AirfieldManager, self};
+use crate::airfield_manager::AirfieldManager;
 use crate::configuration::{AIRFIELDS_FILEPATH, INFLUX_SERIES_NAME, get_influx_url, get_influx_db_name};
 use crate::db::mysql::MySQL;
 use crate::db::dataframe::{Column, DataFrame};
 use crate::db::data_structures::LogbookItem;
 
-use super::CronJob;
+// use super::CronJob;
 
 pub const RTL_RUN_INTERVAL: u64 = 60;    // [s]
 
@@ -53,7 +53,14 @@ impl RealTakeoffLookup {
     }
 
     pub fn check_takeoffs() {
-        let mut mysql = MySQL::new();
+        let mysql_pool = MySQL::new();
+        if mysql_pool.is_err() {
+            warn!("Could not obtain MySQL connection, skipping check_takeoffs().");
+            return;
+        }
+        let mut mysql = mysql_pool.unwrap();
+
+
         let airfield_manager = AirfieldManager::new(AIRFIELDS_FILEPATH);    // (50ms) !!ultra inefficient to read & parse the file every time!!
         let influx_db_name = get_influx_db_name();
 

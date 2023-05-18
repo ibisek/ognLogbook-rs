@@ -23,7 +23,7 @@ impl DbThread {
         DbThread {
             thread: None,
             do_run: Arc::new(AtomicBool::new(true)),
-            pool: Arc::new(Pool::new(db_url).expect("Could not connect to MySQL db!")),
+            pool: Arc::new(Pool::new(db_url).expect("Pool: Could not connect to MySQL db!")),
             to_do_statements: Arc::new(Mutex::new(Queue::new())),
         }
     }

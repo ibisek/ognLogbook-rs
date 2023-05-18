@@ -74,55 +74,64 @@ impl FlownDistanceCalculator {
     }
 
     pub fn calc_distances() {
-        let mut mysql = MySQL::new();
+        match MySQL::new() {
+            Err(e) => {
+                warn!("Could not obtain MySQL connection, skipping calc_distance().");
+            },
 
-        let interval = Utc::now().timestamp() - (2 * FDC_RUN_INTERVAL as i64);
+            Ok(mut mysql) => {
+
+                let interval = Utc::now().timestamp() - (2 * FDC_RUN_INTERVAL as i64);
         
-        let str_sql = format!("SELECT e.id, e.address, e.address_type, e.takeoff_ts, e.landing_ts
-        FROM logbook_entries as e
-        WHERE e.flown_distance is null 
-            AND e.address is not null AND e.address_type is not null AND e.takeoff_ts is not null AND e.landing_ts is not null 
-            AND e.landing_ts >= {interval}
-        LIMIT 100");
+                let str_sql = format!("SELECT e.id, e.address, e.address_type, e.takeoff_ts, e.landing_ts
+                FROM logbook_entries as e
+                WHERE e.flown_distance is null 
+                    AND e.address is not null AND e.address_type is not null AND e.takeoff_ts is not null AND e.landing_ts is not null 
+                    AND e.landing_ts >= {interval}
+                LIMIT 100");
 
-        let mut conn = mysql.get_connection();        
+                let mut conn = mysql.get_connection();        
 
-        let entries: Vec<LogbookEntry> = conn.query_map(str_sql, 
-            |mut row: Row| {
-                LogbookEntry {
-                    id: row.take(0).unwrap(),
-                    addr: row.take(1).unwrap(),
-                    addr_type: AddressType::from_short_str(row.take(2).unwrap()),
-                    takeoff_ts: row.take(3).unwrap(),
-                    landing_ts: row.take(4).unwrap(),
+                let entries: Vec<LogbookEntry> = conn.query_map(str_sql, 
+                    |mut row: Row| {
+                        LogbookEntry {
+                            id: row.take(0).unwrap(),
+                            addr: row.take(1).unwrap(),
+                            addr_type: AddressType::from_short_str(row.take(2).unwrap()),
+                            takeoff_ts: row.take(3).unwrap(),
+                            landing_ts: row.take(4).unwrap(),
+                        }
+                    }
+                ).unwrap();
+
+                let mut update_sqls: Vec<String> = Vec::new();
+
+                for entry in entries {
+                    let addr = format!("{}{}", entry.addr_type.as_long_str(), entry.addr);
+                    let dist = FlownDistanceCalculator::calc_flown_distance(&addr, entry.takeoff_ts, entry.landing_ts).round();
+                    info!("Flown dist for '{addr}' is {dist:.0} km.");
+
+                    if dist > 0_f64 {
+                        // ?save it even if the dist was 0 .. 0 will signalise there was no flight data available; null = to be still calculated
+                        let update_sql = format!("UPDATE logbook_entries SET flown_distance={} WHERE id = {};", dist.round(), entry.id);
+                        update_sqls.push(update_sql);
+                    }
                 }
-            }
-        ).unwrap();
 
-        let mut update_sqls: Vec<String> = Vec::new();
+                if update_sqls.len() > 0 {
+                    info!("Updated {} flown distance(s)", update_sqls.len());
 
-        for entry in entries {
-            let addr = format!("{}{}", entry.addr_type.as_long_str(), entry.addr);
-            let dist = FlownDistanceCalculator::calc_flown_distance(&addr, entry.takeoff_ts, entry.landing_ts).round();
-            info!("Flown dist for '{addr}' is {dist:.0} km.");
-
-            if dist > 0_f64 {
-                // ?save it even if the dist was 0 .. 0 will signalise there was no flight data available; null = to be still calculated
-                let update_sql = format!("UPDATE logbook_entries SET flown_distance={} WHERE id = {};", dist.round(), entry.id);
-                update_sqls.push(update_sql);
-            }
-        }
-
-        if update_sqls.len() > 0 {
-            info!("Updated {} flown distance(s)", update_sqls.len());
-
-            for sql in update_sqls {
-                match conn.query_drop(&sql) {
-                    Ok(_) => (),
-                    Err(e) => error!("when inserting into db: {e}\n\t{sql}"),
+                    for sql in update_sqls {
+                        match conn.query_drop(&sql) {
+                            Ok(_) => (),
+                            Err(e) => error!("when inserting into db: {e}\n\t{sql}"),
+                        }
+                    }
                 }
-            }
-        }
+
+            },
+        };
+        
 
     }
 
