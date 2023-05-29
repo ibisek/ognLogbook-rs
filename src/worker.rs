@@ -78,15 +78,13 @@ impl Worker {
 
                     match q.try_lock() {
                         Ok(mut q_mutex_guard) => {
-                            if q_mutex_guard.size() > 0 {
-                                match q_mutex_guard.remove() {
-                                    Ok(mut beacon) => bp.process(&mut beacon),
-                                    _ => (),
-                                };
-                            }
+                            match q_mutex_guard.remove() {
+                                Ok(mut beacon) => bp.process(&mut beacon),
+                                _ => (),
+                            };
                         },
                         Err(_) => {
-                            thread::sleep(time::Duration::from_millis(1));  // wait a tiny moment
+                            thread::yield_now();
                         },
                     }
                 }
