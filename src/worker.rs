@@ -2,7 +2,7 @@
 use std::time::Duration;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::thread;
+use std::{thread, time};
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -71,9 +71,23 @@ impl Worker {
                         continue;
                     }
                     
-                    while q.lock().unwrap().size() > 0 {
-                        let mut beacon = q.lock().unwrap().remove().unwrap();
-                        bp.process(&mut beacon);
+                    // while q.lock().unwrap().size() > 0 {
+                    //     let mut beacon = q.lock().unwrap().remove().unwrap();
+                    //     bp.process(&mut beacon);
+                    // }
+
+                    match q.try_lock() {
+                        Ok(mut q_mutex_guard) => {
+                            if q_mutex_guard.size() > 0 {
+                                match q_mutex_guard.remove() {
+                                    Ok(mut beacon) => bp.process(&mut beacon),
+                                    _ => (),
+                                };
+                            }
+                        },
+                        Err(_) => {
+                            thread::sleep(time::Duration::from_millis(1));  // wait a tiny moment
+                        },
                     }
                 }
 
