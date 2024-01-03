@@ -31,17 +31,17 @@ pub struct FlownDistanceCalculator {}
 
 impl FlownDistanceCalculator {
     /// @param addr: ogn ID with prefix OGN/ICA/FLR
-    fn calc_flown_distance(addr: &str, start_ts: i64, end_ts: i64) -> f64 {
+    fn calc_flown_distance(addr: &str, start_ts: i64, end_ts: i64) -> (f64, i64) {
         let influx_db_client = Client::new(Url::parse(&get_influx_url()).unwrap(), Some(("", ""))).unwrap();
         let influx_db_name = get_influx_db_name();
 
-        let q= format!("SELECT lat, lon FROM {influx_db_name}..{INFLUX_SERIES_NAME} WHERE addr='{addr}' AND time >= {start_ts}000000000 AND time <= {end_ts}000000000 ORDER BY time");
+        let q= format!("SELECT lat, lon, alt FROM {influx_db_name}..{INFLUX_SERIES_NAME} WHERE addr='{addr}' AND time >= {start_ts}000000000 AND time <= {end_ts}000000000 ORDER BY time");
         let query = Query::new(q);
         let res: Result<DataFrame, ClientError> = influx_db_client.fetch_dataframe(query);
 
         if res.is_err() {
             warn!("FDC: no influx data for '{addr}' between {start_ts} and {end_ts}.");
-            return 0_f64;
+            return (0_f64, 0_i64);
         }
 
         let df = res.unwrap();
@@ -50,10 +50,12 @@ impl FlownDistanceCalculator {
         let cols = df.columns;
         let latitudes: &Column = cols.get("lat").unwrap();
         let longitudes = cols.get("lon").unwrap();
+        let altitudes =  cols.get("alt").unwrap();
 
         let mut prev_lat = 0_f64;
         let mut prev_lon = 0_f64;
         let mut total_dist = 0_f64;
+        let mut max_alt = 0_i64;
         for i in 0..latitudes.len() {
             let lat = latitudes.get_float_value(i).unwrap_or(0_f64).to_radians();
             let lon = longitudes.get_float_value(i).unwrap_or(0_f64).to_radians();
@@ -68,9 +70,14 @@ impl FlownDistanceCalculator {
 
             prev_lat = lat;
             prev_lon = lon;
+
+            let alt = altitudes.get_int_value(i).unwrap_or(0_i64);
+            if alt > max_alt {
+                max_alt = alt;
+            }
         }
 
-        total_dist
+        (total_dist, max_alt)
     }
 
     pub fn calc_distances() {
@@ -108,12 +115,13 @@ impl FlownDistanceCalculator {
 
                 for entry in entries {
                     let addr = format!("{}{}", entry.addr_type.as_long_str(), entry.addr);
-                    let dist = FlownDistanceCalculator::calc_flown_distance(&addr, entry.takeoff_ts, entry.landing_ts).round();
-                    info!("Flown dist for '{addr}' is {dist:.0} km.");
+                    let (dist, max_alt) = FlownDistanceCalculator::calc_flown_distance(&addr, entry.takeoff_ts, entry.landing_ts);
+                    let dist = dist.round();
+                    info!("Flown dist for '{addr}' is {dist:.0} km with max altitude of {max_alt} m.");
 
                     if dist > 0_f64 {
                         // ?save it even if the dist was 0 .. 0 will signalise there was no flight data available; null = to be still calculated
-                        let update_sql = format!("UPDATE logbook_entries SET flown_distance={} WHERE id = {};", dist.round(), entry.id);
+                        let update_sql = format!("UPDATE logbook_entries SET flown_distance={}, max_alt={} WHERE id = {};", dist.round(), max_alt, entry.id);
                         update_sqls.push(update_sql);
                     }
                 }
