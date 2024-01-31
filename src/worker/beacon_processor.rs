@@ -18,7 +18,7 @@ use crate::worker::db_thread::DbThread;
 use crate::worker::expiring_dict::ExpiringDict;
 use crate::worker::utils::get_groundspeed_threshold;
 use crate::worker::influx_worker::InfluxWorker;
-use crate::worker::permanent_storage::PermanentStorageFactory;
+// use crate::worker::permanent_storage::PermanentStorageFactory;
 
 use super::permanent_storage::PermanentStorage;
 
@@ -32,9 +32,9 @@ pub struct BeaconProcessor {
     db_thread: DbThread,
     beacon_duplicate_cache:ExpiringDict<String, bool>,
     influx_worker: InfluxWorker,
-    influx_worker_ps: InfluxWorker,
+    // influx_worker_ps: InfluxWorker,
     t: i64,
-    permanent_storage: Arc<PermanentStorage>,
+    // permanent_storage: Arc<PermanentStorage>,
 }
 
 impl BeaconProcessor {
@@ -46,8 +46,8 @@ impl BeaconProcessor {
         let mut influx_worker = InfluxWorker::new(get_influx_db_name().into());
         influx_worker.start();
 
-        let mut influx_worker_ps = InfluxWorker::new(get_influx_db_name()+"_ps");   // permanent storage
-        influx_worker_ps.start();
+        // let mut influx_worker_ps = InfluxWorker::new(get_influx_db_name()+"_ps");   // permanent storage
+        // influx_worker_ps.start();
 
         BeaconProcessor { 
             geo_file: GeoFile::new(GEOTIFF_FILEPATH), 
@@ -56,9 +56,9 @@ impl BeaconProcessor {
             db_thread: db_thread,
             beacon_duplicate_cache: ExpiringDict::new(1000),
             influx_worker,
-            influx_worker_ps,
+            // influx_worker_ps,
             t: 0,
-            permanent_storage: PermanentStorageFactory::instance().storage_for(&addr_type),
+            // permanent_storage: PermanentStorageFactory::instance().storage_for(&addr_type),
         }
     }
 
@@ -151,11 +151,12 @@ impl BeaconProcessor {
         self.xstop(&beacon.addr_type,"U1");
 
         // store the beacon into influxdb:
-        if self.permanent_storage.eligible4ps(&beacon.addr) {
-            self.influx_worker_ps.store(&beacon);
-        } else {
-            self.influx_worker.store(&beacon);
-        }
+        self.influx_worker.store(&beacon);
+        // if self.permanent_storage.eligible4ps(&beacon.addr) {
+        //     self.influx_worker_ps.store(&beacon);
+        // } else {
+        //     self.influx_worker.store(&beacon);
+        // }
         self.xstop(&beacon.addr_type,"U2");
 
         let addres_type_c = beacon.addr_type.as_short_str();
