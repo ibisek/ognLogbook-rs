@@ -75,7 +75,7 @@ impl GeoFile {
         if x >= 0 && x < self.xsize && y >= 0 && y < self.ysize {
             // read out the value at the geotiff XY position:
             let buf = self.dataset.rasterband(1).unwrap().read_as::<f64>((x as isize,y as isize), (1,1), (1,1), Option::None).unwrap();
-            let mut elevation = buf.data[0].round() as i64;  // [m]
+            let mut elevation = buf.data()[0].round() as i64;  // [m]
             
             if elevation < -10_994 || elevation > 100*1000 {    // below depth of Mariana Trench (10994m) or above space edge (100km)
                 elevation = 0;
